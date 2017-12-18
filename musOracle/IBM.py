@@ -25,18 +25,13 @@ def IBM(track, alpha=1, theta=0.5):
     X = stft(track.audio.T, nperseg=nfft)[-1]
     (I, F, T) = X.shape
 
-    # define the target sources
-    useful_sources = ['bass', 'drums', 'other', 'vocals']
-
     # perform separtion
     estimates = {}
     accompaniment_source = 0
-    for target_name, target in list(track.targets.items()):
-        if target_name not in useful_sources:
-            continue
+    for name, source in track.sources.items():
 
         # compute STFT of target source
-        Yj = stft(target.audio.T, nperseg=nfft)[-1]
+        Yj = stft(source.audio.T, nperseg=nfft)[-1]
 
         # Create Binary Mask
         Mask = np.divide(np.abs(Yj)**alpha, (eps + np.abs(X)**alpha))
@@ -50,11 +45,11 @@ def IBM(track, alpha=1, theta=0.5):
         target_estimate = istft(Yj)[1].T[:N, :]
 
         # set this as the source estimate
-        estimates[target_name] = target_estimate
+        estimates[name] = target_estimate
 
         # accumulate to the accompaniment if this is not vocals
-        if target_name != 'vocals':
-            accompaniment_source += target_estimate
+        accompaniment_source += target_estimate
+
     # set accompaniment source
     estimates['accompaniment'] = accompaniment_source
 

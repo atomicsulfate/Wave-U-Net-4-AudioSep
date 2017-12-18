@@ -16,7 +16,6 @@ def IBM(track, alpha=1, theta=0.5):
 
     # parameters for STFT
     nfft = 2048
-    hop = 1024
 
     # small epsilon to avoid dividing by zero
     eps = np.finfo(np.float).eps
@@ -28,7 +27,6 @@ def IBM(track, alpha=1, theta=0.5):
 
     # define the target sources
     useful_sources = ['bass', 'drums', 'other', 'vocals']
-    J = len(useful_sources)
 
     # perform separtion
     estimates = {}
@@ -42,7 +40,7 @@ def IBM(track, alpha=1, theta=0.5):
 
         # Create Binary Mask
         Mask = np.divide(np.abs(Yj)**alpha, (eps + np.abs(X)**alpha))
-        Mask[np.where(Mask > theta)] = 1
+        Mask[np.where(Mask >= theta)] = 1
         Mask[np.where(Mask < theta)] = 0
 
         # multiply mask
@@ -63,7 +61,7 @@ def IBM(track, alpha=1, theta=0.5):
     return estimates
 
 
-# initiate dsdtools
+# initiate musdb
 mus = musdb.DB()
 
 # default parameters

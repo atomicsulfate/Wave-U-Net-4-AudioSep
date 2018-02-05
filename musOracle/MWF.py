@@ -108,8 +108,12 @@ def MWF(track):
         # inverte to time domain
         target_estimate = istft(Yj)[1].T[:N, :]
 
-        # take this as the source estimate
+        # set this as the source estimate
         estimates[name] = target_estimate
+
+        # accumulate to the accompaniment if this is not vocals
+        if name != 'vocals':
+            accompaniment_source += target_estimate
 
     estimates['accompaniment'] = accompaniment_source
     return estimates
@@ -121,6 +125,6 @@ mus = musdb.DB()
 mus.run(
     MWF,
     estimates_dir='MWF',
-    parallel=True,
-    cpus=4
+    subsets='test',
+    parallel=False,
 )

@@ -48,7 +48,8 @@ def IBM(track, alpha=1, theta=0.5):
         estimates[name] = target_estimate
 
         # accumulate to the accompaniment if this is not vocals
-        accompaniment_source += target_estimate
+        if name != 'vocals':
+            accompaniment_source += target_estimate
 
     # set accompaniment source
     estimates['accompaniment'] = accompaniment_source
@@ -66,6 +67,7 @@ theta = 0.5  # threshold
 mus.run(
     functools.partial(IBM, alpha=alpha, theta=theta),
     estimates_dir='IBM',
+    subsets='test',
     parallel=True,
     cpus=4
 )

@@ -1,3 +1,3 @@
 scipy
 numpy
-mustools
+musdb>=0.2.1

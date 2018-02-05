@@ -47,8 +47,10 @@ def IRM(track, alpha=2):
 
         # set this as the source estimate
         estimates[name] = target_estimate
-        # also add it to the accompaniment (=bass+drums+other)
-        accompaniment_source += target_estimate
+
+        # accumulate to the accompaniment if this is not vocals
+        if name != 'vocals':
+            accompaniment_source += target_estimate
 
     estimates['accompaniment'] = accompaniment_source
 
@@ -64,6 +66,7 @@ alpha = 2  # exponent for the ratio mask, take power spectrogram
 mus.run(
     functools.partial(IRM, alpha=alpha),
     estimates_dir='IRM_alpha=%d' % alpha,
+    subsets='test',
     parallel=True,
     cpus=4
 )

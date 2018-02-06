@@ -126,5 +126,6 @@ mus.run(
     MWF,
     estimates_dir='MWF',
     subsets='test',
-    parallel=False,
+    parallel=True,
+    cpus=4
 )

@@ -60,8 +60,7 @@ def IRM(track, alpha=2):
 # initiate dsdtools
 mus = musdb.DB()
 
-# default parameters
-alpha = 2  # exponent for the ratio mask, take power spectrogram
+alpha = 2
 
 mus.run(
     functools.partial(IRM, alpha=alpha),

@@ -9,7 +9,7 @@ def MIX(track):
     estimates = {}
     for name, target in track.sources.items():
         # set accompaniment source
-        estimates[name] = track.audio / len(track.targets)
+        estimates[name] = track.audio / len(track.sources)
 
     estimates['accompaniment'] = estimates['bass'] + \
         estimates['drums'] + estimates['other']

@@ -1,11 +1,13 @@
 import musdb
+import museval
 import numpy as np
 import functools
+import argparse
 from scipy.signal import stft, istft
 
 
-def IBM(track, alpha=1, theta=0.5):
-    """Ideal Ratio Mask:
+def IBM(track, alpha=1, theta=0.5, eval_dir=None):
+    """Ideal Binary Mask:
     processing all channels inpependently with the ideal binary mask.
 
     the mix is send to some source if the spectrogram of that source over that
@@ -54,20 +56,61 @@ def IBM(track, alpha=1, theta=0.5):
     # set accompaniment source
     estimates['accompaniment'] = accompaniment_source
 
+    if eval_dir is not None:
+        museval.eval_mus_track(
+            track,
+            estimates,
+            output_dir=eval_dir,
+        )
+
     return estimates
 
 
-# initiate musdb
-mus = musdb.DB()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Evaluate Ideal Binary Mask'
+    )
+    parser.add_argument(
+        '--audio_dir',
+        nargs='?',
+        help='Folder where audio results are saved'
+    )
 
-# default parameters
-alpha = 1  # exponent for the ratio Mask
-theta = 0.5  # threshold
+    parser.add_argument(
+        '--eval_dir',
+        nargs='?',
+        help='Folder where evaluation results are saved'
+    )
 
-mus.run(
-    functools.partial(IBM, alpha=alpha, theta=theta),
-    estimates_dir='IBM',
-    subsets='test',
-    parallel=True,
-    cpus=4
-)
+    parser.add_argument(
+        '--alpha',
+        type=int,
+        default=1,
+        help='exponent for the ratio Mask'
+    )
+
+    parser.add_argument(
+        '--theta',
+        type=float,
+        default=0.5,
+        help='threshold parameter'
+    )
+
+    args = parser.parse_args()
+
+    # default parameters
+    alpha = args.alpha
+    theta = args.theta
+
+    # initiate musdb
+    mus = musdb.DB()
+
+    mus.run(
+        functools.partial(
+            IBM, alpha=alpha, theta=theta, eval_dir=args.eval_dir
+        ),
+        estimates_dir=args.audio_dir,
+        subsets='test',
+        parallel=True,
+        cpus=2
+    )

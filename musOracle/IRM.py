@@ -1,10 +1,12 @@
 import musdb
+import museval
 import numpy as np
 import functools
+import argparse
 from scipy.signal import stft, istft
 
 
-def IRM(track, alpha=2):
+def IRM(track, alpha=2, eval_dir=None):
     """Ideal Ratio Mask:
     processing all channels inpependently with the ideal ratio mask.
     this is the ratio of spectrograms, where alpha is the exponent to take for
@@ -54,18 +56,52 @@ def IRM(track, alpha=2):
 
     estimates['accompaniment'] = accompaniment_source
 
+    if eval_dir is not None:
+        museval.eval_mus_track(
+            track,
+            estimates,
+            output_dir=eval_dir,
+        )
+
     return estimates
 
 
-# initiate dsdtools
-mus = musdb.DB()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Evaluate Ideal Ratio Mask'
+    )
+    parser.add_argument(
+        '--audio_dir',
+        nargs='?',
+        help='Folder where audio results are saved'
+    )
 
-alpha = 2
+    parser.add_argument(
+        '--eval_dir',
+        nargs='?',
+        help='Folder where evaluation results are saved'
+    )
 
-mus.run(
-    functools.partial(IRM, alpha=alpha),
-    estimates_dir='IRM_alpha=%d' % alpha,
-    subsets='test',
-    parallel=True,
-    cpus=4
-)
+    parser.add_argument(
+        '--alpha',
+        type=int,
+        default=2,
+        help='exponent for the ratio Mask'
+    )
+
+    args = parser.parse_args()
+
+    alpha = args.alpha
+
+    # initiate musdb
+    mus = musdb.DB()
+
+    mus.run(
+        functools.partial(
+            IRM, alpha=alpha, eval_dir=args.eval_dir
+        ),
+        estimates_dir=args.audio_dir,
+        subsets='test',
+        parallel=True,
+        cpus=2
+    )

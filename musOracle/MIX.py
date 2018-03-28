@@ -1,7 +1,10 @@
 import musdb
+import museval
+import functools
+import argparse
 
 
-def MIX(track):
+def MIX(track, eval_dir=None):
     """Mixture as Estimate
     """
 
@@ -13,17 +16,44 @@ def MIX(track):
 
     estimates['accompaniment'] = estimates['bass'] + \
         estimates['drums'] + estimates['other']
+
+    if eval_dir is not None:
+        museval.eval_mus_track(
+            track,
+            estimates,
+            output_dir=eval_dir,
+        )
+
     return estimates
 
 
-# initiate musdb
-mus = musdb.DB()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Evaluate Mixture as Estimate'
+    )
+    parser.add_argument(
+        '--audio_dir',
+        nargs='?',
+        help='Folder where audio results are saved'
+    )
 
+    parser.add_argument(
+        '--eval_dir',
+        nargs='?',
+        help='Folder where evaluation results are saved'
+    )
 
-mus.run(
-    MIX,
-    estimates_dir='MIX',
-    subsets='test',
-    parallel=True,
-    cpus=4
-)
+    args = parser.parse_args()
+
+    # initiate musdb
+    mus = musdb.DB()
+
+    mus.run(
+        functools.partial(
+            MIX, eval_dir=args.eval_dir
+        ),
+        estimates_dir=args.audio_dir,
+        subsets='test',
+        parallel=True,
+        cpus=2
+    )

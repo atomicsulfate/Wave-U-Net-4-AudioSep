@@ -1,6 +1,9 @@
 import musdb
+import museval
 import numpy as np
 import itertools
+import functools
+import argparse
 from scipy.signal import stft, istft
 
 
@@ -17,7 +20,7 @@ def invert(M, eps):
     return invM
 
 
-def MWF(track):
+def MWF(track, eval_dir=None):
     """Multichannel Wiener Filter:
     processing all channels jointly with the ideal multichannel filter
     based on the local gaussian model, assuming time invariant spatial
@@ -116,16 +119,44 @@ def MWF(track):
             accompaniment_source += target_estimate
 
     estimates['accompaniment'] = accompaniment_source
+
+    if eval_dir is not None:
+        museval.eval_mus_track(
+            track,
+            estimates,
+            output_dir=eval_dir,
+        )
+
     return estimates
 
 
-# initiate dsdtools
-mus = musdb.DB()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Evaluate Multichannel Wiener Filter'
+    )
+    parser.add_argument(
+        '--audio_dir',
+        nargs='?',
+        help='Folder where audio results are saved'
+    )
 
-mus.run(
-    MWF,
-    estimates_dir='MWF',
-    subsets='test',
-    parallel=True,
-    cpus=4
-)
+    parser.add_argument(
+        '--eval_dir',
+        nargs='?',
+        help='Folder where evaluation results are saved'
+    )
+
+    args = parser.parse_args()
+
+    # initiate musdb
+    mus = musdb.DB()
+
+    mus.run(
+        functools.partial(
+            MWF, eval_dir=args.eval_dir
+        ),
+        estimates_dir=args.audio_dir,
+        subsets='test',
+        parallel=True,
+        cpus=2
+    )

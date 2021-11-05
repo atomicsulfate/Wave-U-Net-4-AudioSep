@@ -1,4 +1,4 @@
 #download the musdb18 dataset
-wget https://zenodo.org/record/3338373/files/musdb18hq.zip
-unzip musdb18hq.zip
-rm musdb18hq.zip
+wget https://zenodo.org/record/1117372/files/musdb18.zip
+unzip musdb18.zip
+rm musdb18.zip

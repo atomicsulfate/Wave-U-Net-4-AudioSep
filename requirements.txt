@@ -1,0 +1,5 @@
+numpy==1.19.5
+tqdm==4.62.1
+torch==1.4.0
+torchvision==0.5.0
+tensorboard==2.6.0

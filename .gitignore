@@ -139,3 +139,5 @@ cython_debug/
 
 # Dataset Wav files
 *.wav
+*.mp4
+*.mp3

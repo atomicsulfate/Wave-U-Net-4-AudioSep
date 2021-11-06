@@ -6,11 +6,6 @@ import os
 import math
 import tarfile
 import multiprocessing
-
-import scipy
-import librosa
-import boto3
-import requests
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -85,7 +80,6 @@ def benchmark_resample(
     rolloff=DEFAULT_ROLLOFF,
     resampling_method=DEFAULT_RESAMPLING_METHOD,
     beta=None,
-    librosa_type=None,
     iters=5,
 ):
     if method == "functional":
@@ -113,15 +107,6 @@ def benchmark_resample(
         begin = time.time()
         for _ in range(iters):
             resampler(waveform)
-        elapsed = time.time() - begin
-        return elapsed / iters
-    elif method == "librosa":
-        waveform_np = waveform.squeeze().numpy()
-        begin = time.time()
-        for _ in range(iters):
-            librosa.resample(
-                waveform_np, sample_rate, resample_rate, res_type=librosa_type
-            )
         elapsed = time.time() - begin
         return elapsed / iters
 

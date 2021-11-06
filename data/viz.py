@@ -1,13 +1,6 @@
 import io
 import os
-import math
-import tarfile
 import multiprocessing
-
-import scipy
-import librosa
-import boto3
-import requests
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd

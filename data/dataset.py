@@ -10,6 +10,8 @@ class SeparationDataset(Dataset):
         '''
         Initialises a source separation dataset
         :param data_path_list: list which contains data_mix path and data_accompaniment paths
+        :param frame_shapes: todo, deal with output frames
+        :param transforms: list of generator functions
         '''
         super(SeparationDataset, self).__init__()
 

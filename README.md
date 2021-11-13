@@ -23,7 +23,7 @@ python -m pip install -r requirements.txt
 We have to do this only once. Now we can always activate the virtual environment
 
 * Download the dataset using the bash script by running the following command. We only have to do this once.
-WARNING: THIS IS A 22GB DATASET.
+WARNING: THIS IS A 5GB DATASET.
 ```
 cd data; source get_dataset.sh
 ```

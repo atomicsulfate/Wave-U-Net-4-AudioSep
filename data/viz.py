@@ -8,7 +8,7 @@ import time
 import torch
 import torchaudio
 from IPython.display import Audio, display
-
+import utils
 
 def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None):
     waveform = waveform.numpy()
@@ -156,7 +156,7 @@ def plot_sweep(
     x_ticks = [100, 500, 1000, 5000, 10000, 20000, max_sweep_rate // 2]
     y_ticks = [1000, 5000, 10000, 20000, sample_rate // 2]
 
-    time, freq = _get_freq_ticks(max_sweep_rate, offset, sample_rate // 2)
+    time, freq = utils._get_freq_ticks(max_sweep_rate, offset, sample_rate // 2)
     freq_x = [f if f in x_ticks and f <= max_sweep_rate // 2 else None for f in freq]
     freq_y = [f for f in freq if f >= 1000 and f in y_ticks and f <= sample_rate // 2]
 

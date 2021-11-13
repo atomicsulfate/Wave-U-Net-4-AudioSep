@@ -9,12 +9,22 @@ import multiprocessing
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import time
 import torch
 import torchaudio
+import librosa
+import soundfile
 from IPython.display import Audio, display
+import logging
+logger = logging.getLogger(__name__)
 
-
+SAMPLE_WAV_SPEECH_PATH=None
+SAMPLE_RIR_PATH=None
+DEFAULT_OFFSET=None
+DEFAULT_LOWPASS_FILTER_WIDTH=None
+DEFAULT_ROLLOFF=None
+DEFAULT_RESAMPLING_METHOD=None
 def _get_sample(path, resample=None):
     effects = [["remix", "1"]]
     if resample:
@@ -153,3 +163,20 @@ def inspect_file(path):
     print("-" * 10)
     print(f" - File size: {os.path.getsize(path)} bytes")
     print(f" - {torchaudio.info(path)}")
+
+def load(path, sr=22050, mono=True, mode="numpy", offset=0.0, duration=None):
+    #todo: change librosa to torchaudio
+    y, curr_sr = librosa.load(path, sr=sr, mono=mono, res_type='kaiser_fast', offset=offset, duration=duration)
+    logger.debug(f"Loading file in location: {path} with sample_rate {sr}")
+    if len(y.shape) == 1:
+        # Expand channel dimension
+        y = y[np.newaxis, :]
+
+    if mode == "pytorch":
+        y = torch.tensor(y)
+
+    return y, curr_sr
+
+def write_wav(path, audio, sr):
+    logger.debug(f"Saving audio file in location: {path} with sample_rate {sr}")
+    torchaudio.save(path, torch.from_numpy(audio.T).to(torch.float32), sr)

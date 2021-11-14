@@ -1,10 +1,10 @@
 Wave-U-Net
 
-#Cluster account setup
+# Cluster account setup
 
 * Follow step 1 listed here - https://isis.tu-berlin.de/pluginfile.php/2110087/mod_resource/content/16/python_cluster_tutorial.pdf
 
-#Environment setup (local and cluster)
+# Environment setup (local and cluster)
 We use [miniconda](https://docs.conda.io/en/latest/miniconda.html) as package manager. To install miniconda:
 1. Download the installation script for Python 3.8 and your OS (download [this](https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh) for the cluster).
 2. Run the installer: `bash <script_name>` and follow instructions on screen. When asked to run `conda init`, answer `yes` if you want conda 

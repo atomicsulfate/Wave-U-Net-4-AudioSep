@@ -51,8 +51,7 @@ def load(path, sr=22050, mono=True, mode="numpy", offset=0.0, duration=None):
 
 
 def write_wav(path, audio, sr):
-    soundfile.write(path, audio.T, sr, "PCM_16")
-
+    soundfile.write(path, audio, sr, "PCM_16")
 
 def resample(audio, orig_sr, new_sr, mode="numpy"):
     if orig_sr == new_sr:

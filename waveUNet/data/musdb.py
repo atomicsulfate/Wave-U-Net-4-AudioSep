@@ -121,7 +121,9 @@ def get_musdb_folds(root_path, version="HQ"):
     test_list = dataset[1]
 
     np.random.seed(1337) # Ensure that partitioning is always the same on each run
-    train_list = np.random.choice(train_val_list, 75, replace=False)
+    val_ratio = 0.25
+    train_size = round(len(train_val_list)*(1-val_ratio))
+    train_list = np.random.choice(train_val_list, train_size, replace=False)
     val_list = [elem for elem in train_val_list if elem not in train_list]
     # print("First training song: " + str(train_list[0])) # To debug whether partitioning is deterministic
     return {"train" : train_list, "val" : val_list, "test" : test_list}

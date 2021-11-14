@@ -1,7 +1,7 @@
 import os
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from utils import load
+from waveUNet.data.utils import load
 import logging
 logger = logging.getLogger(__name__)
 

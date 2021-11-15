@@ -9,6 +9,10 @@ import torch
 import torchaudio
 from IPython.display import Audio, display
 import utils
+import librosa
+import librosa.display
+import numpy as np
+
 
 def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None):
     waveform = waveform.numpy()
@@ -170,3 +174,38 @@ def plot_sweep(
     axis.yaxis.grid(True, alpha=0.67)
     figure.suptitle(f"{title} (sample rate: {sample_rate} Hz)")
     plt.show(block=True)
+
+    
+   
+
+def show(audio_file):
+    
+    y, sr = librosa.load(audio_file)
+    fig, axes = plt.subplots(nrows=3, sharex=False, sharey=False,figsize=(15,15))
+    
+    # plot waveform
+    librosa.display.waveplot(y, sr=sr, alpha=0.8, ax=axes[0],color="xkcd:indigo blue")
+    axes[0].grid()
+    axes[0].set_title("Waveform")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Magnitude")
+    
+    n_fft = 2048 # length of the FFT window
+    hop_length = int(n_fft/4) # number of audio samples between adjacent STFT columns.
+    
+    #plot spectrogram
+    D = np.abs(librosa.stft(y, n_fft=n_fft,  hop_length=hop_length))
+    DB = librosa.amplitude_to_db(D, ref=np.max)
+    m = librosa.display.specshow(DB, sr=sr, hop_length=hop_length, x_axis='time', y_axis='log', ax=axes[1]);
+    plt.colorbar(m,format='%+2.0f dB', ax=axes[1])
+    axes[1].set_xlabel("Time (s)")
+    axes[1].set_ylabel("Frequency (Hz)")
+    axes[1].set_title("Spectogram")
+    
+    # plot spectrum
+    D = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))
+    axes[2].plot(D, c="xkcd:indigo blue");
+    axes[2].grid()
+    axes[2].set_title("Spectrum")
+    axes[2].set_xlabel("Frequency (Hz)")
+    axes[2].set_ylabel("Amplitude")

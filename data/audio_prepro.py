@@ -1,24 +1,25 @@
 # -------------------------------------------------------------------------------
 # https://pytorch.org/tutorials/beginner/audio_preprocessing_tutorial.html
 # -------------------------------------------------------------------------------
-import io
 import os
 import math
-import tarfile
-import multiprocessing
-import matplotlib
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 import time
 import torch
 import torchaudio
 import librosa
-import soundfile
-from IPython.display import Audio, display
 import logging
 logger = logging.getLogger(__name__)
 
+DEF_HOP_LENGTH_DIV = 4;
+
+def stft(waveform, n_fft = 2048):
+    # If hop_length is changed, it must be changed in plot_spectrogram()!
+    hop_length = int(n_fft / DEF_HOP_LENGTH_DIV)  # number of audio samples between adjacent STFT columns.
+    return librosa.stft(waveform, n_fft=n_fft, hop_length=hop_length)
+
+###################################
+# Misc. functions (unused so far)
+###################################
 SAMPLE_WAV_SPEECH_PATH=None
 SAMPLE_RIR_PATH=None
 DEFAULT_OFFSET=None

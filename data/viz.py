@@ -1,18 +1,44 @@
-import io
-import os
-import multiprocessing
-import matplotlib
 import matplotlib.pyplot as plt
-import pandas as pd
-import time
 import torch
-import torchaudio
 from IPython.display import Audio, display
-import utils
+import data.audio_prepro
 import librosa
 import librosa.display
 import numpy as np
 
+def plot_wave(waveform, sample_rate, axes):
+    librosa.display.waveplot(waveform, sr=sample_rate, alpha=0.8, ax=axes, color="xkcd:indigo blue")
+    axes.grid()
+    axes.set_title("Waveform")
+    axes.set_xlabel("Time (s)")
+    axes.set_ylabel("Magnitude")
+
+def plot_spectrogram(stft, sample_rate, axes):
+    n_fft = (stft.shape[0]-1)*2
+    hop_length = int(n_fft / data.audio_prepro.DEF_HOP_LENGTH_DIV)
+    D = np.abs(stft)
+    DB = librosa.amplitude_to_db(D, ref=np.max)
+    m = librosa.display.specshow(DB, sr=sample_rate, hop_length=hop_length, x_axis='time', y_axis='log', ax=axes);
+    plt.colorbar(m, format='%+2.0f dB', ax=axes)
+    axes.set_xlabel("Time (s)")
+    axes.set_ylabel("Frequency (Hz)")
+    axes.set_title("Spectrogram")
+
+def plot_spectrum(stft, axes):
+    D = np.abs(stft)
+    axes.plot(D, c="xkcd:indigo blue");
+    axes.grid()
+    axes.set_title("Spectrum")
+    axes.set_xlabel("Frequency (Hz)")
+    axes.set_ylabel("Amplitude")
+
+def show(audio_file):
+    y, sr = librosa.load(audio_file)
+    fig, axes = plt.subplots(nrows=3, sharex=False, sharey=False,figsize=(15,15))
+    
+#################
+# Misc. functions
+#################
 
 def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None):
     waveform = waveform.numpy()
@@ -67,18 +93,6 @@ def play_audio(waveform, sample_rate):
         raise ValueError("Waveform with more than 2 channels are not supported.")
 
 
-def plot_spectrogram(spec, title=None, ylabel="freq_bin", aspect="auto", xmax=None):
-    fig, axs = plt.subplots(1, 1)
-    axs.set_title(title or "Spectrogram (db)")
-    axs.set_ylabel(ylabel)
-    axs.set_xlabel("frame")
-    im = axs.imshow(librosa.power_to_db(spec), origin="lower", aspect=aspect)
-    if xmax:
-        axs.set_xlim((0, xmax))
-    fig.colorbar(im, ax=axs)
-    plt.show(block=False)
-
-
 def plot_mel_fbank(fbank, title=None):
     fig, axs = plt.subplots(1, 1)
     axs.set_title(title or "Filter bank")
@@ -86,19 +100,6 @@ def plot_mel_fbank(fbank, title=None):
     axs.set_ylabel("frequency bin")
     axs.set_xlabel("mel bin")
     plt.show(block=False)
-
-
-def get_spectrogram(n_fft=400, win_len=None, hop_len=None, power=2.0):
-    waveform, _ = get_speech_sample()
-    spectrogram = T.Spectrogram(
-        n_fft=n_fft,
-        win_length=win_len,
-        hop_length=hop_len,
-        center=True,
-        pad_mode="reflect",
-        power=power,
-    )
-    return spectrogram(waveform)
 
 
 def plot_pitch(waveform, sample_rate, pitch):
@@ -142,7 +143,6 @@ def plot_kaldi_pitch(waveform, sample_rate, pitch, nfcc):
     axis.legend(lns, labels, loc=0)
     plt.show(block=False)
 
-
 DEFAULT_OFFSET = 201
 SWEEP_MAX_SAMPLE_RATE = 48000
 DEFAULT_LOWPASS_FILTER_WIDTH = 6
@@ -160,7 +160,7 @@ def plot_sweep(
     x_ticks = [100, 500, 1000, 5000, 10000, 20000, max_sweep_rate // 2]
     y_ticks = [1000, 5000, 10000, 20000, sample_rate // 2]
 
-    time, freq = utils._get_freq_ticks(max_sweep_rate, offset, sample_rate // 2)
+    time, freq = data.audio_prepro._get_freq_ticks(max_sweep_rate, offset, sample_rate // 2)
     freq_x = [f if f in x_ticks and f <= max_sweep_rate // 2 else None for f in freq]
     freq_y = [f for f in freq if f >= 1000 and f in y_ticks and f <= sample_rate // 2]
 
@@ -176,36 +176,4 @@ def plot_sweep(
     plt.show(block=True)
 
     
-   
 
-def show(audio_file):
-    
-    y, sr = librosa.load(audio_file)
-    fig, axes = plt.subplots(nrows=3, sharex=False, sharey=False,figsize=(15,15))
-    
-    # plot waveform
-    librosa.display.waveplot(y, sr=sr, alpha=0.8, ax=axes[0],color="xkcd:indigo blue")
-    axes[0].grid()
-    axes[0].set_title("Waveform")
-    axes[0].set_xlabel("Time (s)")
-    axes[0].set_ylabel("Magnitude")
-    
-    n_fft = 2048 # length of the FFT window
-    hop_length = int(n_fft/4) # number of audio samples between adjacent STFT columns.
-    
-    #plot spectrogram
-    D = np.abs(librosa.stft(y, n_fft=n_fft,  hop_length=hop_length))
-    DB = librosa.amplitude_to_db(D, ref=np.max)
-    m = librosa.display.specshow(DB, sr=sr, hop_length=hop_length, x_axis='time', y_axis='log', ax=axes[1]);
-    plt.colorbar(m,format='%+2.0f dB', ax=axes[1])
-    axes[1].set_xlabel("Time (s)")
-    axes[1].set_ylabel("Frequency (Hz)")
-    axes[1].set_title("Spectogram")
-    
-    # plot spectrum
-    D = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length))
-    axes[2].plot(D, c="xkcd:indigo blue");
-    axes[2].grid()
-    axes[2].set_title("Spectrum")
-    axes[2].set_xlabel("Frequency (Hz)")
-    axes[2].set_ylabel("Amplitude")

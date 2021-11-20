@@ -6,14 +6,14 @@ import librosa
 import librosa.display
 import numpy as np
 
-def plot_wave(waveform, sample_rate, axes):
+def plot_wave(waveform, sample_rate, axes, title="Waveform"):
     librosa.display.waveplot(waveform, sr=sample_rate, alpha=0.8, ax=axes, color="xkcd:indigo blue")
     axes.grid()
-    axes.set_title("Waveform")
+    axes.set_title(title)
     axes.set_xlabel("Time (s)")
     axes.set_ylabel("Magnitude")
 
-def plot_spectrogram(stft, sample_rate, axes):
+def plot_spectrogram(stft, sample_rate, axes, title="Spectrogram"):
     n_fft = (stft.shape[0]-1)*2
     hop_length = int(n_fft / data.audio_prepro.DEF_HOP_LENGTH_DIV)
     D = np.abs(stft)
@@ -22,13 +22,13 @@ def plot_spectrogram(stft, sample_rate, axes):
     plt.colorbar(m, format='%+2.0f dB', ax=axes)
     axes.set_xlabel("Time (s)")
     axes.set_ylabel("Frequency (Hz)")
-    axes.set_title("Spectrogram")
+    axes.set_title(title)
 
-def plot_spectrum(stft, axes):
+def plot_spectrum(stft, axes, title="Spectrum"):
     D = np.abs(stft)
     axes.plot(D, c="xkcd:indigo blue");
     axes.grid()
-    axes.set_title("Spectrum")
+    axes.set_title(title)
     axes.set_xlabel("Frequency (Hz)")
     axes.set_ylabel("Amplitude")
 

@@ -32,10 +32,6 @@ def plot_spectrum(stft, axes, title="Spectrum"):
     axes.set_xlabel("Frequency (Hz)")
     axes.set_ylabel("Amplitude")
 
-def show(audio_file):
-    y, sr = librosa.load(audio_file)
-    fig, axes = plt.subplots(nrows=3, sharex=False, sharey=False,figsize=(15,15))
-    
 #################
 # Misc. functions
 #################

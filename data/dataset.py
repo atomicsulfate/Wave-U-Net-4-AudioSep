@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SeparationDataset(Dataset):
-    def __init__(self, data_path_list, frame_shapes=None, transforms=[]):
+    def __init__(self, data_path_list, domain='time', transforms=[]):
         '''
         Initialises a source separation dataset
         :param data_path_list: list which contains data_mix path and data_accompaniment paths

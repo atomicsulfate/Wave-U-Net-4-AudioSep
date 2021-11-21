@@ -61,7 +61,6 @@ def get_musdb(database_path):
     for subset in ["train", "test"]:
         tracks = mus.load_mus_tracks(subset)
         samples = list()
-
         # Go through tracks
         for track in sorted(tracks):
             # Skip track if mixture is already written, assuming this track is done already

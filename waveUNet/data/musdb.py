@@ -16,7 +16,8 @@ def get_musdbhq(database_path):
 
     for subset in ["train", "test"]:
         print("Loading " + subset + " set...")
-        tracks = glob.glob(os.path.join(database_path, subset, "*"))
+
+        tracks = [os.path.join(database_path, subset, track_folder) for track_folder in next(os.walk(os.path.join(database_path, subset)))[1]]  #glob.glob(os.path.join(database_path, subset, "*"))
         samples = list()
 
         # Go through tracks

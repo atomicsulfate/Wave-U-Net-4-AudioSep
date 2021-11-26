@@ -1,6 +1,7 @@
 # Reuse Wave-UNet musdb loading functions.
 from musdb.audio_classes import MultiTrack
 import musdb
+import librosa
 
 # Wave-UNet musdb loading functions sort tracks alphabetically, but
 # MultiTrack class does not have a comparison function defined.

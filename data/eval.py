@@ -3,9 +3,21 @@ import museval
 from pathlib import Path
 import simplejson
 import numpy as np
+import musdb
 
 def evaluate_estimates(db, estimates_dir):
     museval.eval_mus_dir(db, estimates_dir, output_dir=estimates_dir)
+
+def evaluate_track_estimates(track_name, target_refs, target_estimates, estimates_dir, sample_rate=22050):
+    class DummyTarget:
+        def __init__(self, audio):
+            self.audio = audio
+
+    track = musdb.MultiTrack("", name=track_name,subset='test', targets=None, sample_rate=sample_rate)
+    track.targets = { track_name: DummyTarget(audio) for track_name, audio in target_refs.items()}
+    track.rate = sample_rate
+
+    museval.eval_mus_track(track, target_estimates, estimates_dir)
 
 def create_eval_store(estimates_dir):
     p = Path(estimates_dir)

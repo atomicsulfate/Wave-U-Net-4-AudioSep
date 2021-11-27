@@ -4,6 +4,7 @@ from pathlib import Path
 import simplejson
 import numpy as np
 import musdb
+from tqdm import tqdm
 
 def evaluate_estimates(db, estimates_dir):
     museval.eval_mus_dir(db, estimates_dir, output_dir=estimates_dir)
@@ -32,10 +33,12 @@ def create_eval_store(estimates_dir):
         store.add_track(track_df)
     return store
 
-def create_method_store(root_estimates_dir, method_dirs):
+def create_method_store(root_estimates_dir, method_dirs, subset=None):
     store = museval.MethodStore()
-    for method in method_dirs:
+    for method in tqdm(method_dirs,"Creating eval store"):
         method_estimates_dir = os.path.join(root_estimates_dir, method)
+        if (subset is not None):
+            method_estimates_dir = os.path.join(method_estimates_dir, subset)
         store.add_evalstore(create_eval_store(method_estimates_dir), method)
 
     return store
@@ -44,8 +47,8 @@ def _filter_df_col(df, col_name, col_values):
     if (col_values is not None):
         col_values = [col_values] if isinstance(col_values, str) else col_values
         df = df[df[col_name].isin(col_values)]
-        if (len(col_values) == 1):
-            df = df.drop(col_name, axis=1)
+    if (len(df[col_name].unique()) == 1):
+        df = df.drop(col_name, axis=1)
     return df
 
 def plot_violin(method_store, axes, methods=None, metrics=None, targets=None, title="Metrics"):
@@ -68,7 +71,7 @@ def plot_violin(method_store, axes, methods=None, metrics=None, targets=None, ti
     xlabel = ','.join(xtick_labels.columns.values)
     xtick_labels = xtick_labels.apply(','.join, axis=1).values
 
-    axes.violinplot(values)
+    axes.violinplot(values, showmedians=True)
     axes.set_title(title)
     axes.set_ylabel("Score")
     axes.set_xlabel(xlabel)

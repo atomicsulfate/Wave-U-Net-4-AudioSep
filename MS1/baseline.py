@@ -18,7 +18,7 @@ class Model:
     and time.
     '''
     def __init__(self, mask_type="binary", alpha=1,
-                 thetas = {'vocals':0.3, 'drums':0.5, 'bass':0.5, 'other':0.6, 'accompaniment': 0.8},
+                 thetas = {'vocals':0.25, 'drums':0.4, 'bass':0.4, 'other':0.45, 'accompaniment': 0.75},
                  nfft = 2048):
         '''
         :param mask_type: Indicates whether to use 'binary' or 'ratio' masks.

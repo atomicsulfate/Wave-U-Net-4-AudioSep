@@ -52,7 +52,7 @@ def _show_signal(source, sample_rate, axes, plots, name=None, metrics_store=None
             j += 1
             ft = _plot(plot, source, sample_rate, ax, metrics_store, ft, name)
 
-def show(x, outfile=None, names=None, targets=None, metrics_store=None,
+def show(x=None, outfile=None, names=None, targets=None, metrics_store=None,
          plots=Plot.SPECTROGRAM | Plot.SPECTRUM | Plot.WAVE, sample_rate=22050, dpi=300):
     '''
     Shows multiple plots describing each of the input audio signals.
@@ -85,10 +85,10 @@ def show(x, outfile=None, names=None, targets=None, metrics_store=None,
     plt.rc('xtick', labelsize=6)
     plt.rc('ytick', labelsize=6)
 
-    num_signals = len(x)
-    if (targets is not None and len(targets) != num_signals):
-        raise ValueError("y must have same length as x")
-    if (names is not None and len(names) != num_signals):
+    num_signals = 0 if x is None else len(x)
+    if (targets is not None and num_signals > 0 and len(targets) != num_signals):
+        raise ValueError("targets must have same length as x")
+    if (names is not None and num_signals > 0 and len(names) != num_signals):
         raise ValueError("names must have same length as x")
     num_figures = num_signals if num_signal_plots > 0 else 0
     if (plots & Plot.GLOBAL_SEP_METRICS):
@@ -112,35 +112,39 @@ def show(x, outfile=None, names=None, targets=None, metrics_store=None,
     if (plots & Plot.GLOBAL_SEP_METRICS):
         subfig = subfigs[-1]
         axes = subfig.subplots(1)
-        plot_violin(metrics_store, axes, methods=['ibm'], targets=list(targets[0].keys()))
+        target = metrics_store.df['target'].unique()[0]
+        metric = metrics_store.df['metric'].unique()[0]
+        plot_violin(metrics_store, axes, title=f"{target} | {metric}")
     if (outfile is None):
         plt.show()
     else:
         plt.savefig(outfile)
 
 if __name__ == '__main__':
-    #import librosa
+    import itertools
 
-    # mix = librosa.load(os.path.join(root_dir, "data/musdb/test/Al James - Schoolboy Facination.stem_mix.wav"), mono=True, sr=22050)[0]
-    # vocals = librosa.load(os.path.join(root_dir,"data/musdb/test/Al James - Schoolboy Facination.stem_vocals.wav"), mono=True, sr=22050)[0]
-    # acc = librosa.load(os.path.join(root_dir,"data/musdb/test/Al James - Schoolboy Facination.stem_accompaniment.wav"), mono=True, sr=22050)[0]
-    # show([mix], outfile=None, names=["Al James - Schoolboy Facination"], y=[{"vocals": vocals, "drums": acc}])
-    #show([mix],outfile="samples.png", names=["Al James - Schoolboy Facination"], y=[{"vocals": vocals, "drums": src2}])
-
-    data = get_musdb_folds(os.path.join(root_dir,'data/musdbmini'))
-    path_list = data['train']
+    dataset = 'musdb'
+    data = get_musdb_folds(os.path.join(root_dir,'data', dataset))
+    path_list = data['test']
+    track_names = list(map(lambda target_dict: os.path.basename(os.path.dirname(target_dict['mix'])), path_list))
     test = SeparationDataset(path_list)
     # mix, targets = test[0]
     # name = os.path.basename(os.path.dirname(path_list[0]['mix']))
     # voice_inst_targets = { 'vocals': targets['vocals'], 'accompaniment': targets['accompaniment']}
 
-    mixes, targets = map(list,zip(*test))
-    targets = list(map(lambda t:  { 'vocals': t['vocals'], 'accompaniment': t['accompaniment']}, targets))
-    names =  list(map(lambda target_dict: os.path.basename(os.path.dirname(target_dict['mix'])), path_list))
-    store = create_method_store('data/musdbmini/estimates', ['ibm'])
-    store.df = store.df[store.df.track.isin(names)]
+    #mixes, targets = map(list,zip(*test))
+    #targets = list(map(lambda t:  { 'vocals': t['vocals'], 'accompaniment': t['accompaniment']}, targets))
+    #show(mixes, outfile=None, names=names, targets=targets, metrics_store=store)
 
-    show(mixes, outfile=None, names=names, targets=targets, metrics_store=store,plots=Plot.GLOBAL_SEP_METRICS)
 
-    # show(mixes, outfile=None, names=names, targets=targets, metrics_store=store,
-    #      plots=Plot.SPECTROGRAM | Plot.SPECTRUM | Plot.WAVE | Plot.GLOBAL_SEP_METRICS)
+    # Global separation metrics
+    store = create_method_store('data/musdb/estimates', ['ibm','irm','mwf'], 'test')
+    df = store.df[store.df.track.isin(track_names)]
+
+    for target, metric in itertools.product(['vocals', 'drums', 'bass', 'other', 'accompaniment'],
+                                            ['SDR','ISR','SIR','SAR' ]):
+        store.df = df[(df.metric == metric) & (df.target ==target)]
+        show(outfile=f"plots/{dataset}_{target}_{metric}.png", metrics_store=store, plots=Plot.GLOBAL_SEP_METRICS)
+
+
+

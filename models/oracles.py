@@ -2,6 +2,7 @@
 from enum import IntEnum, auto
 from musOracle import IBM, IRM, MWF
 import musdb
+from tqdm import tqdm
 
 class Oracle(IntEnum):
     IBM = auto()
@@ -37,5 +38,5 @@ def predict_db(db, oracle, estimates_dir):
     :param oracle: The oracle
     :type oracle: Oracle
     '''
-    for track in db:
+    for track in tqdm(db, "Predicting"):
         db.save_estimates(predict_track(track, oracle), track, estimates_dir)

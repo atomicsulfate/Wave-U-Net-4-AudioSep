@@ -10,11 +10,11 @@ from data.musdb_loader import get_musdb_folds
 from data.dataset import SeparationDataset
 from data.eval import evaluate_track_estimates
 from tqdm import tqdm
-from data.utils import write_wav
+from data.musdb_utils import save_estimates
 
 class BaselineModel:
     def __init__(self, mask_type="binary", alpha=1,
-                 thetas = {'vocals':0.3, 'drums':0.4, 'bass':0.5, 'other':0.5, 'accompaniment': 0.85},
+                 thetas = {'vocals':0.35, 'drums':0.5, 'bass':0.5, 'other':0.6, 'accompaniment': 0.8},
                  nfft = 2048):
         self.alpha = alpha
         self.nfft = nfft
@@ -101,8 +101,8 @@ class BaselineModel:
         return target_estimates
 
 if __name__ == '__main__':
-    db_path = os.path.join(root_dir,'data/musdb')
-    output_path = os.path.join(root_dir,'data/musdb/estimates/baseline')
+    db_path = os.path.join(root_dir,sys.argv[1])
+    output_path = os.path.join(root_dir,sys.argv[2])  #'data/musdb/estimates/baseline'
     train_dataset = SeparationDataset(get_musdb_folds(db_path)['train'])
 
     model = BaselineModel()
@@ -122,13 +122,9 @@ if __name__ == '__main__':
     output_test_path = os.path.join(output_path, 'test')
     for i, track_estimates in enumerate(tqdm(target_estimates, "Saving estimates and evaluations")):
         track_name = track_names[i]
-        track_estimates_dir = os.path.join(output_test_path, track_name)
         track_references = target_references[i]
-
+        save_estimates(track_name, output_test_path, target_estimates)
         for target_name in target_names:
-            estimate_path = os.path.join(track_estimates_dir,target_name + ".wav")
-            os.makedirs(track_estimates_dir, exist_ok=True)
-            write_wav(estimate_path,track_estimates[target_name],22050)
             track_references[target_name] = track_references[target_name].numpy().T
         evaluate_track_estimates(track_name, track_references, track_estimates, output_path)
 

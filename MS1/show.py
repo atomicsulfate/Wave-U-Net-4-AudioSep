@@ -123,8 +123,9 @@ def show(x=None, outfile=None, names=None, targets=None, metrics_store=None,
 if __name__ == '__main__':
     import itertools
 
-    dataset = 'musdb'
-    data = get_musdb_folds(os.path.join(root_dir,'data', dataset))
+    dataset = 'musdb_extended'
+    db_path = os.path.join(root_dir,'data', dataset)
+    data = get_musdb_folds(db_path)
     path_list = data['test']
     track_names = list(map(lambda target_dict: os.path.basename(os.path.dirname(target_dict['mix'])), path_list))
     test = SeparationDataset(path_list)
@@ -138,7 +139,7 @@ if __name__ == '__main__':
 
 
     # Global separation metrics
-    store = create_method_store('data/musdb/estimates', ['baseline','ibm','irm','mwf'], 'test')
+    store = create_method_store(os.path.join(db_path,'estimates'), ['baseline', 'ibm','irm'], 'test')
     df = store.df[store.df.track.isin(track_names)]
 
     for target, metric in itertools.product(['vocals', 'drums', 'bass', 'other', 'accompaniment'],

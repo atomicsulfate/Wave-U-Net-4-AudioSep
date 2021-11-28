@@ -5,6 +5,7 @@ import simplejson
 import numpy as np
 import musdb
 from tqdm import tqdm
+import matplotlib as plt
 
 def evaluate_estimates(db, estimates_dir):
     museval.eval_mus_dir(db, estimates_dir, output_dir=estimates_dir)
@@ -58,7 +59,7 @@ def plot_violin(method_store, axes, methods=None, metrics=None, targets=None, ti
     '''
 
     # Get median scores for each track
-    df = method_store.agg_frames_scores().reset_index(name='score')
+    df = method_store.agg_frames_scores().reset_index(name='score').dropna()
 
     # Get lists of scores per method-metric-target
     df = df.groupby(['method','metric','target'])['score'].apply(list).reset_index(name='score')
@@ -72,8 +73,10 @@ def plot_violin(method_store, axes, methods=None, metrics=None, targets=None, ti
     xtick_labels = xtick_labels.apply(','.join, axis=1).values
 
     axes.violinplot(values, showmedians=True)
+    axes.tick_params(axis='both', which='major', labelsize='large')
     axes.set_title(title)
-    axes.set_ylabel("Score")
+    axes.set_ylim([-20, 40])
+    axes.set_ylabel("Energy ratio (dB)")
     axes.set_xlabel(xlabel)
     axes.set_xticks(np.arange(1, len(xtick_labels) + 1))
     axes.set_xticklabels(xtick_labels)

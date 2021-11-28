@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
 
     # Global separation metrics
-    store = create_method_store('data/musdb/estimates', ['ibm','irm','mwf'], 'test')
+    store = create_method_store('data/musdb/estimates', ['baseline','ibm','irm','mwf'], 'test')
     df = store.df[store.df.track.isin(track_names)]
 
     for target, metric in itertools.product(['vocals', 'drums', 'bass', 'other', 'accompaniment'],

@@ -14,11 +14,11 @@ dependencies:
   - pandas
   - jupyter
   # Wave-U-Net dependencies
-  - pytorch=1.4.0
-  - torchvision=0.5.0
-  - cudatoolkit=10.1
+  - pytorch=1.10
+  - torchvision
+  - cudatoolkit=11.3
   - tensorboard
-  - futuremus
+  - future
   - librosa
   - pysoundfile
   - ffmpeg=4.4

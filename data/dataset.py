@@ -1,11 +1,10 @@
-import os
-from torch.utils.data import Dataset
-from tqdm import tqdm
+from waveUNet.data.dataset import *
 from waveUNet.data.utils import load
+from torch.utils.data import Dataset
 import logging
 logger = logging.getLogger(__name__)
 
-class SeparationDataset(Dataset):
+class RawSeparationDataset(Dataset):
     def __init__(self, data_path_list, domain='time', transforms=[]):
         '''
         Initialises a source separation dataset
@@ -13,7 +12,7 @@ class SeparationDataset(Dataset):
         :param frame_shapes: todo, deal with output frames
         :param transforms: list of generator functions
         '''
-        super(SeparationDataset, self).__init__()
+        super(RawSeparationDataset, self).__init__()
 
         self.data_path_list = data_path_list
         self.length = len(data_path_list)

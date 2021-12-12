@@ -7,7 +7,7 @@ sys.path.append(root_dir)
 import numpy as np
 from scipy.signal import stft, istft
 from data.musdb_loader import get_musdb_folds
-from data.dataset import SeparationDataset
+from data.dataset import RawSeparationDataset
 from data.eval import evaluate_track_estimates
 from tqdm import tqdm
 from data.musdb_utils import save_estimates
@@ -122,13 +122,13 @@ class Model:
 if __name__ == '__main__':
     db_path = os.path.join(root_dir,sys.argv[1])
     output_path = os.path.join(root_dir,sys.argv[2])
-    train_dataset = SeparationDataset(get_musdb_folds(db_path)['train'])
+    train_dataset = RawSeparationDataset(get_musdb_folds(db_path)['train'])
 
     model = Model()
     model.fit(train_dataset)
 
     test_paths = get_musdb_folds(db_path)['test']
-    test_dataset = SeparationDataset(test_paths)
+    test_dataset = RawSeparationDataset(test_paths)
     track_names = list(map(lambda target_dict: os.path.basename(os.path.dirname(target_dict['mix'])), test_paths))
     target_names = list(test_paths[0].keys())
     target_names.remove('mix')

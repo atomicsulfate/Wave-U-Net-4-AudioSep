@@ -9,7 +9,7 @@ from enum import Flag, auto
 import matplotlib.pyplot as plt
 from data.audio_prepro import stft
 from data.viz import plot_wave, plot_spectrogram, plot_spectrum
-from data.dataset import SeparationDataset
+from data.dataset import RawSeparationDataset
 from data.musdb_loader import get_musdb_folds
 from data.eval import create_method_store, plot_violin
 import museval
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     data = get_musdb_folds(db_path)
     path_list = data['test']
     track_names = list(map(lambda target_dict: os.path.basename(os.path.dirname(target_dict['mix'])), path_list))
-    test = SeparationDataset(path_list)
+    test = RawSeparationDataset(path_list)
     # mix, targets = test[0]
     # name = os.path.basename(os.path.dirname(path_list[0]['mix']))
     # voice_inst_targets = { 'vocals': targets['vocals'], 'accompaniment': targets['accompaniment']}

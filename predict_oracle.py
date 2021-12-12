@@ -2,7 +2,7 @@ import os
 import sys
 import musdb
 import museval
-import models.oracles as oracles
+import model.oracles as oracles
 from data.eval import evaluate_estimates, evaluate_track_estimates
 from data.musdb_utils import save_estimates
 import numpy as np

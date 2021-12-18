@@ -2,11 +2,13 @@ import argparse
 import itertools as iter
 import copy
 
+#TODO: Add hyperparameter presets, i.e, predefined sets of parameter values with a name
+# (e.g. 'baseline', 'M1'...).
 class ModelParams:
 
     def __init__(self):
         self._parser = argparse.ArgumentParser()
-        self._hyperparams = set()
+        self._hyperparams = []
 
     def __repr__(self):
         return self._parser.format_usage()
@@ -16,7 +18,7 @@ class ModelParams:
         return self
 
     def add_hyperparam(self, name, *args, **kwargs):
-        self._hyperparams.add(name)
+        self._hyperparams.append(name)
         return self.add_param(name, *args, nargs='+', **kwargs)
 
     def parse_args(self, *args, **kwargs) -> 'ModelArgs':
@@ -67,9 +69,14 @@ class ModelArgs:
     def get_comb_partition(self, index, num_partitions) -> 'ModelArgs':
         if (self._hyper_combs == None):
             self._compute_combs()
-        partition_size = self.get_num_combs() // num_partitions
-        comb_start = index * partition_size
-        comb_end = (index+1) * partition_size
+        if (index >= num_partitions):
+            return None
+        num_combs = self.get_num_combs()
+        min_partition_size = num_combs // num_partitions
+        remainder = num_combs - (min_partition_size*num_partitions)
+        comb_start = index * min_partition_size + min(index, remainder)
+        comb_end = comb_start + min_partition_size + (1 if remainder-index > 0 else 0)
+
         combs = self._hyper_combs[comb_start: comb_end]
         return ModelArgs(self._args, self._hyperparams, combs)
 

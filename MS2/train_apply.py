@@ -23,7 +23,8 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
 _methods = {'waveunet': [train_waveunet, waveunet_params]}
 
 def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/space/datasets',
-                model_args: ModelArgs = None, task_id = 0, num_tasks = 1):
+                model_args: ModelArgs = None, job_name = 'experiment',
+                task_id = 0, task_index = 0, num_tasks = 1):
     if method not in _methods:
         raise ValueError(f"Unknown method {method}.")
 
@@ -37,11 +38,11 @@ def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/spa
             train_func(args)
             return
 
-    model_args = model_args.get_comb_partition(task_id, num_tasks)
+    model_args = model_args.get_comb_partition(task_index, num_tasks)
 
     for i in range(model_args.get_num_combs()):
         args_comb = model_args.get_comb(i)
-        print(f'Task {task_id}, experiment {i}: {args_comb}')
-        #train_func(args_comb, experiment_name=f"task{task_id}_exp{i}")
+        print(f'Start training for job {job_name}, task {task_id}, params {i}: {args_comb}')
+        train_func(args_comb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}")
 
 

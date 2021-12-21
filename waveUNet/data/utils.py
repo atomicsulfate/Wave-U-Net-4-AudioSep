@@ -60,7 +60,9 @@ def resample(audio, orig_sr, new_sr, mode="numpy"):
     if isinstance(audio, torch.Tensor):
         audio = audio.detach().cpu().numpy()
 
-    out = librosa.resample(audio, orig_sr, new_sr, res_type='kaiser_fast')
+    out = librosa.resample(np.squeeze(audio), orig_sr, new_sr, res_type='kaiser_fast')
+    if (len(out.shape) < 2):
+        out = np.expand_dims(out, axis=0)
 
     if mode == "pytorch":
         out = torch.tensor(out)

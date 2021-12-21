@@ -1,4 +1,4 @@
-from model.waveunet import waveunet_params
+from model.waveunet_params import waveunet_params
 from MS2.train_apply import train_apply
 import os
 

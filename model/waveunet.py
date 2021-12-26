@@ -100,20 +100,24 @@ class DownsamplingBlock(nn.Module):
         return curr_size
 
 class Waveunet(nn.Module):
-    def __init__(self, num_inputs, num_channels, num_outputs, instruments, kernel_size, target_output_size, conv_type, res, separate=False, depth=1, strides=2):
+    def __init__(self, num_inputs, num_channels, num_outputs, instruments, upsampling_kernel_size, downsampling_kernel_size, bottleneck_kernel_size, target_output_size, conv_type, res, separate=False, depth=1, strides=2):
         super(Waveunet, self).__init__()
 
         self.num_levels = len(num_channels)
         self.strides = strides
-        self.kernel_size = kernel_size
+        self.upsampling_kernel_size = upsampling_kernel_size
+        self.downsampling_kernel_size = downsampling_kernel_size
+        self.bottleneck_kernel_size = bottleneck_kernel_size
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.depth = depth
         self.instruments = instruments
         self.separate = separate
 
-        # Only odd filter kernels allowed
-        assert(kernel_size % 2 == 1)
+         # Only odd filter kernels allowed
+        assert(downsampling_kernel_size % 2 == 1)
+        assert(bottleneck_kernel_size % 2 == 1)
+        assert(upsampling_kernel_size % 2 == 1)
 
         self.waveunets = nn.ModuleDict()
 
@@ -129,14 +133,14 @@ class Waveunet(nn.Module):
                 in_ch = num_inputs if i == 0 else num_channels[i]
 
                 module.downsampling_blocks.append(
-                    DownsamplingBlock(in_ch, num_channels[i], num_channels[i+1], kernel_size, strides, depth, conv_type, res))
+                    DownsamplingBlock(in_ch, num_channels[i], num_channels[i+1], self.downsampling_kernel_size, strides, depth, conv_type, res))
 
             for i in range(0, self.num_levels - 1):
                 module.upsampling_blocks.append(
-                    UpsamplingBlock(num_channels[-1-i], num_channels[-2-i], num_channels[-2-i], kernel_size, strides, depth, conv_type, res))
+                    UpsamplingBlock(num_channels[-1-i], num_channels[-2-i], num_channels[-2-i], self.upsampling_kernel_size, strides, depth, conv_type, res))
 
             module.bottlenecks = nn.ModuleList(
-                [ConvLayer(num_channels[-1], num_channels[-1], kernel_size, 1, conv_type) for _ in range(depth)])
+                [ConvLayer(num_channels[-1], num_channels[-1], self.bottleneck_kernel_size, 1, conv_type) for _ in range(depth)])
 
             # Output conv
             outputs = num_outputs if separate else num_outputs * len(instruments)

@@ -36,6 +36,6 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
     .add_hyperparam('conv_type', type=str, default="gn",
                   help="Type of convolution (normal, BN-normalised, GN-normalised): normal/bn/gn")\
     .add_hyperparam('res', type=str, default="fixed",
-                  help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned")\
+                  help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned/naive")\
     .add_hyperparam('feature_growth', type=str, default="double",
                   help="How the features in each layer should grow, either (add) the initial number of features each time, or multiply by 2 (double)")

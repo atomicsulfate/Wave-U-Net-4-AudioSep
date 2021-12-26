@@ -70,6 +70,9 @@ class DownsamplingBlock(nn.Module):
         # CONV 2 with decimation
         if res == "fixed":
             self.downconv = Resample1d(n_outputs, 15, stride) # Resampling with fixed-size sinc lowpass filter
+        elif res == "naive":
+            #todo: add decimation here
+            self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
         else:
             self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
 

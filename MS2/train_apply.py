@@ -139,7 +139,7 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
 
                 # Compute loss for each instrument/model
                 optimizer.zero_grad()
-                if (state["step"] == 0):
+                if (args.separate == 0 and state["step"] == 0):
                     print("Saving model graph")
                     writer.add_graph(model, x, use_strict_trace=False)
                     print("Graph added to logs")

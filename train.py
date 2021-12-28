@@ -4,9 +4,9 @@ import os
 
 if __name__ == '__main__':
     # Get task information if lauched from qsub
-    task_id = int(os.environ['SGE_TASK_ID']) if 'SGE_TASK_ID' in os.environ else 0
-    task_first = int(os.environ['SGE_TASK_FIRST']) if 'SGE_TASK_FIRST' in os.environ else task_id
-    task_last = int(os.environ['SGE_TASK_LAST']) if 'SGE_TASK_LAST' in os.environ else task_id
+    task_id = int(os.environ['SGE_TASK_ID']) if 'SGE_TASK_ID' in os.environ and os.environ['SGE_TASK_ID'] != 'undefined' else 0
+    task_first = int(os.environ['SGE_TASK_FIRST']) if 'SGE_TASK_FIRST' in os.environ and os.environ['SGE_TASK_FIRST'] != 'undefined' else task_id
+    task_last = int(os.environ['SGE_TASK_LAST']) if 'SGE_TASK_LAST' in os.environ and os.environ['SGE_TASK_LAST'] != 'undefined' else task_id
     num_tasks = task_last - task_first + 1
     task_index = task_id - task_first
     job_name = os.environ['JOB_NAME'] if 'JOB_NAME' in os.environ else 'experiment'

@@ -6,29 +6,39 @@ from model.resample import Resample1d
 from model.conv import ConvLayer
 
 class UpsamplingBlock(nn.Module):
-    def __init__(self, n_inputs, n_shortcut, n_outputs, kernel_size, stride, depth, conv_type, res):
+    def __init__(self, n_inputs, n_shortcut, n_outputs, kernel_size, stride, depth, conv_type, res, num_convs):
         super(UpsamplingBlock, self).__init__()
         assert(stride > 1)
-
+        self.num_convs = num_convs
         # CONV 1 for UPSAMPLING
-        if res == "fixed":
-            self.upconv = Resample1d(n_inputs, 15, stride, transpose=True)
+        if self.num_convs == 1:
+            if res == "fixed":
+                self.upconv = Resample1d(n_shortcut, 15, stride, transpose=True)
+            else:
+                self.upconv = ConvLayer(n_shortcut, n_shortcut, kernel_size, stride, conv_type, transpose=True)
         else:
-            self.upconv = ConvLayer(n_inputs, n_inputs, kernel_size, stride, conv_type, transpose=True)
+            if res == "fixed":
+                self.upconv = Resample1d(n_inputs, 15, stride, transpose=True)
+            else:
+                self.upconv = ConvLayer(n_inputs, n_inputs, kernel_size, stride, conv_type, transpose=True)
 
-        self.pre_shortcut_convs = nn.ModuleList([ConvLayer(n_inputs, n_outputs, kernel_size, 1, conv_type)] +
-                                                [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in range(depth - 1)])
+        if self.num_convs == 2:    
+            self.pre_shortcut_convs = nn.ModuleList([ConvLayer(n_inputs, n_outputs, kernel_size, 1, conv_type)] +
+                                                    [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in range(depth - 1)])
 
-        # CONVS to combine high- with low-level information (from shortcut)
-        self.post_shortcut_convs = nn.ModuleList([ConvLayer(n_outputs + n_shortcut, n_outputs, kernel_size, 1, conv_type)] +
-                                                 [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in range(depth - 1)])
-
+            # CONVS to combine high- with low-level information (from shortcut)
+            self.post_shortcut_convs = nn.ModuleList([ConvLayer(n_outputs + n_shortcut, n_outputs, kernel_size, 1, conv_type)] +
+                                                     [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in range(depth - 1)])
+        elif self.num_convs == 1:
+            self.post_shortcut_convs = nn.ModuleList([ConvLayer(n_outputs + n_shortcut, n_outputs, kernel_size, 1, conv_type)] +
+                                                    [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in range(depth - 1)])
     def forward(self, x, shortcut):
         # UPSAMPLE HIGH-LEVEL FEATURES
         upsampled = self.upconv(x)
-
-        for conv in self.pre_shortcut_convs:
-            upsampled = conv(upsampled)
+        
+        if self.num_convs == 2:
+            for conv in self.pre_shortcut_convs:
+                upsampled = conv(upsampled)
 
         # Prepare shortcut connection
         combined = centre_crop(shortcut, upsampled)
@@ -42,8 +52,9 @@ class UpsamplingBlock(nn.Module):
         curr_size = self.upconv.get_output_size(input_size)
 
         # Upsampling convs
-        for conv in self.pre_shortcut_convs:
-            curr_size = conv.get_output_size(curr_size)
+        if self.num_convs == 2:
+            for conv in self.pre_shortcut_convs:
+                curr_size = conv.get_output_size(curr_size)
 
         # Combine convolutions
         for conv in self.post_shortcut_convs:
@@ -52,27 +63,34 @@ class UpsamplingBlock(nn.Module):
         return curr_size
 
 class DownsamplingBlock(nn.Module):
-    def __init__(self, n_inputs, n_shortcut, n_outputs, kernel_size, stride, depth, conv_type, res):
+    def __init__(self, n_inputs, n_shortcut, n_outputs, kernel_size, stride, depth, conv_type, res, num_convs):
         super(DownsamplingBlock, self).__init__()
         assert(stride > 1)
 
         self.kernel_size = kernel_size
         self.stride = stride
+        self.num_convs = num_convs
 
         # CONV 1
         self.pre_shortcut_convs = nn.ModuleList([ConvLayer(n_inputs, n_shortcut, kernel_size, 1, conv_type)] +
                                                 [ConvLayer(n_shortcut, n_shortcut, kernel_size, 1, conv_type) for _ in range(depth - 1)])
 
-        self.post_shortcut_convs = nn.ModuleList([ConvLayer(n_shortcut, n_outputs, kernel_size, 1, conv_type)] +
+        
+        
+        if self.num_convs == 2:
+            self.post_shortcut_convs = nn.ModuleList([ConvLayer(n_shortcut, n_outputs, kernel_size, 1, conv_type)] +
                                                  [ConvLayer(n_outputs, n_outputs, kernel_size, 1, conv_type) for _ in
                                                   range(depth - 1)])
 
+        if self.num_convs == 1:
+            n_outputs = n_shortcut
+            
         # CONV 2 with decimation
         if res == "fixed":
             self.downconv = Resample1d(n_outputs, 15, stride) # Resampling with fixed-size sinc lowpass filter
         elif res == "naive":
             #todo: add decimation here
-            self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
+            self.downconv = self.naive_decimation
         else:
             self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
 
@@ -81,11 +99,12 @@ class DownsamplingBlock(nn.Module):
         shortcut = x
         for conv in self.pre_shortcut_convs:
             shortcut = conv(shortcut)
-
+        
         # PREPARING FOR DOWNSAMPLING
         out = shortcut
-        for conv in self.post_shortcut_convs:
-            out = conv(out)
+        if self.num_convs == 2:
+            for conv in self.post_shortcut_convs:
+                out = conv(out)
 
         # DOWNSAMPLING
         out = self.downconv(out)
@@ -94,16 +113,20 @@ class DownsamplingBlock(nn.Module):
 
     def get_input_size(self, output_size):
         curr_size = self.downconv.get_input_size(output_size)
-
-        for conv in reversed(self.post_shortcut_convs):
-            curr_size = conv.get_input_size(curr_size)
+        if self.num_convs == 2:
+            for conv in reversed(self.post_shortcut_convs):
+                curr_size = conv.get_input_size(curr_size)
 
         for conv in reversed(self.pre_shortcut_convs):
             curr_size = conv.get_input_size(curr_size)
         return curr_size
 
+    def naive_decimation(self, x):
+        #Todo: a very naive decimation
+        return x[:,::2,:] # Decimate by factor of 2 # out = (in-1)/2 + 1
+
 class Waveunet(nn.Module):
-    def __init__(self, num_inputs, num_channels, num_outputs, instruments, upsampling_kernel_size, downsampling_kernel_size, bottleneck_kernel_size, target_output_size, conv_type, res, separate=False, depth=1, strides=2):
+    def __init__(self, num_inputs, num_channels, num_outputs, instruments, upsampling_kernel_size, downsampling_kernel_size, bottleneck_kernel_size, target_output_size, conv_type, res, separate=False, depth=1, strides=2, num_convs=2):
         super(Waveunet, self).__init__()
 
         self.num_levels = len(num_channels)
@@ -116,6 +139,7 @@ class Waveunet(nn.Module):
         self.depth = depth
         self.instruments = instruments
         self.separate = separate
+        self.num_convs=num_convs
 
          # Only odd filter kernels allowed
         assert(downsampling_kernel_size % 2 == 1)
@@ -136,15 +160,19 @@ class Waveunet(nn.Module):
                 in_ch = num_inputs if i == 0 else num_channels[i]
 
                 module.downsampling_blocks.append(
-                    DownsamplingBlock(in_ch, num_channels[i], num_channels[i+1], self.downsampling_kernel_size, strides, depth, conv_type, res))
+                    DownsamplingBlock(in_ch, num_channels[i], num_channels[i+1], self.downsampling_kernel_size, strides, depth, conv_type, res, num_convs))
 
             for i in range(0, self.num_levels - 1):
                 module.upsampling_blocks.append(
-                    UpsamplingBlock(num_channels[-1-i], num_channels[-2-i], num_channels[-2-i], self.upsampling_kernel_size, strides, depth, conv_type, res))
+                    UpsamplingBlock(num_channels[-1-i], num_channels[-2-i], num_channels[-2-i], self.upsampling_kernel_size, strides, depth, conv_type, res, num_convs))
 
-            module.bottlenecks = nn.ModuleList(
-                [ConvLayer(num_channels[-1], num_channels[-1], self.bottleneck_kernel_size, 1, conv_type) for _ in range(depth)])
-
+            if self.num_convs == 2:
+                module.bottlenecks = nn.ModuleList(
+                    [ConvLayer(num_channels[-1], num_channels[-1], self.bottleneck_kernel_size, 1, conv_type) for _ in range(depth)])
+            elif self.num_convs == 1:
+                module.bottlenecks = nn.ModuleList(
+                    [ConvLayer(num_channels[i], num_channels[i], self.bottleneck_kernel_size, 1, conv_type) for _ in range(depth)])
+        
             # Output conv
             outputs = num_outputs if separate else num_outputs * len(instruments)
             module.output_conv = nn.Conv1d(num_channels[0], outputs, 1)

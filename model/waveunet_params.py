@@ -35,6 +35,8 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
     .add_hyperparam('loss', type=str, default="L1", help="L1 or L2")\
     .add_hyperparam('conv_type', type=str, default="gn",
                   help="Type of convolution (normal, BN-normalised, GN-normalised): normal/bn/gn")\
+    .add_hyperparam('num_convs', type=int, default=2,
+                  help="Num convolutions to have, default=2, in the original paper it was 1")\
     .add_hyperparam('res', type=str, default="fixed",
                   help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned/naive")\
     .add_hyperparam('feature_growth', type=str, default="double",

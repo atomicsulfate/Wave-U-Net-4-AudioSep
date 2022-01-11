@@ -25,13 +25,19 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
     .add_hyperparam('batch_size', type=int, default=4, help="Batch size")\
     .add_hyperparam('levels', type=int, default=6, help="Number of DS/US blocks")\
     .add_hyperparam('depth', type=int, default=1, help="Number of convs per block")\
-    .add_hyperparam('kernel_size', type=int, default=5,
+    .add_hyperparam('upsampling_kernel_size', type=int, default=5,
+                  help="Filter width of kernels. Has to be an odd number")\
+    .add_hyperparam('downsampling_kernel_size', type=int, default=5,
+                  help="Filter width of kernels. Has to be an odd number")\
+    .add_hyperparam('bottleneck_kernel_size', type=int, default=5,
                   help="Filter width of kernels. Has to be an odd number")\
     .add_hyperparam('strides', type=int, default=4, help="Strides in Waveunet")\
     .add_hyperparam('loss', type=str, default="L1", help="L1 or L2")\
     .add_hyperparam('conv_type', type=str, default="gn",
                   help="Type of convolution (normal, BN-normalised, GN-normalised): normal/bn/gn")\
+    .add_hyperparam('num_convs', type=int, default=2,
+                  help="Num convolutions to have, default=2, in the original paper it was 1")\
     .add_hyperparam('res', type=str, default="fixed",
-                  help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned")\
+                  help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned/naive")\
     .add_hyperparam('feature_growth', type=str, default="double",
                   help="How the features in each layer should grow, either (add) the initial number of features each time, or multiply by 2 (double)")

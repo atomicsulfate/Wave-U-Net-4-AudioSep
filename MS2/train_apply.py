@@ -23,14 +23,16 @@ from data.musdb import get_musdb_folds
 from data.utils import crop_targets, random_amplify
 from test import evaluate, validate
 from model.waveunet import Waveunet
+from math import ceil
 
 def _create_waveunet(args):
     num_features = [args.features * i for i in range(1, args.levels + 1)] if args.feature_growth == "add" else \
         [args.features * 2 ** i for i in range(0, args.levels)]
-    target_outputs = int(args.output_size * args.sr)
-    model = Waveunet(args.channels, num_features, args.channels, args.instruments, kernel_size=args.kernel_size,
+    target_outputs = ceil(args.output_size * args.sr)
+    model = Waveunet(args.channels, num_features, args.channels, args.instruments, downsampling_kernel_size=args.downsampling_kernel_size,
+                     upsampling_kernel_size=args.upsampling_kernel_size, bottleneck_kernel_size=args.bottleneck_kernel_size,
                      target_output_size=target_outputs, depth=args.depth, strides=args.strides,
-                     conv_type=args.conv_type, res=args.res, separate=args.separate)
+                     conv_type=args.conv_type, res=args.res, separate=args.separate, num_convs=args.num_convs)
 
     if args.cuda:
         model = model_utils.DataParallel(model)
@@ -227,5 +229,3 @@ def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/spa
         args_comb = model_args.get_comb(i)
         print(f'Start training for job {job_name}, task {task_id}, params {i}: {args_comb}')
         train_func(args_comb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}")
-
-

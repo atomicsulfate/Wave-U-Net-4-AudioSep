@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from model.crop import centre_crop
-from model.resample import Resample1d
+from model.resample import Resample1d, LinearUpsample, Decimate
 from model.conv import ConvLayer
 
 class UpsamplingBlock(nn.Module):
@@ -13,6 +13,8 @@ class UpsamplingBlock(nn.Module):
         # CONV 1 for UPSAMPLING
         if res == "fixed":
             self.upconv = Resample1d(n_inputs, 15, stride, transpose=True)
+        elif res == "naive":
+            self.upconv = LinearUpsample(scale_factor=2,mode='linear', align_corners=True)
         else:
             self.upconv = ConvLayer(n_inputs, n_inputs, kernel_size, stride, conv_type, transpose=True)
 
@@ -78,8 +80,7 @@ class DownsamplingBlock(nn.Module):
         if res == "fixed":
             self.downconv = Resample1d(n_outputs, 15, stride) # Resampling with fixed-size sinc lowpass filter
         elif res == "naive":
-            #todo: add decimation here
-            self.downconv = self.naive_decimation
+            self.downconv = Decimate(2)
         else:
             self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
 
@@ -109,10 +110,6 @@ class DownsamplingBlock(nn.Module):
         for conv in reversed(self.pre_shortcut_convs):
             curr_size = conv.get_input_size(curr_size)
         return curr_size
-
-    def naive_decimation(self, x):
-        #Todo: a very naive decimation
-        return x[:,::2,:] # Decimate by factor of 2 # out = (in-1)/2 + 1
 
 class Waveunet(nn.Module):
     def __init__(self, num_inputs, num_channels, num_outputs, instruments, upsampling_kernel_size, downsampling_kernel_size, bottleneck_kernel_size, target_output_size, conv_type, res, separate=False, depth=1, strides=2, num_convs=2):

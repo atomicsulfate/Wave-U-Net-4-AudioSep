@@ -19,9 +19,9 @@
 # Uses conv with sinc lowpass filter with given stride instead of straight decimation.
 # Uses transposed conv with sinc lowpass filter with given stride instead of linear interpolation.
 # --output_size 0.743 seconds =>  0.743 * 22050 =16384 (output samples in paper).
-python train.py --hdf_dir=/home/space/datasets/musdb/hdf --cuda --instruments accompaniment vocals\
---cycles 1 --sr 22050 --channels 1 --output_size 0.743 --patience 20 --separate 0 --features 24\
---lr 1e-4 --min_lr 1e-4 --batch_size 16 --levels 13 --depth 1 --downsampling_kernel_size 15 --bottleneck_kernel_size 15\
+python train.py --hdf_dir=/home/space/datasets/musdb/hdf --cuda --instruments accompaniment vocals \
+--cycles 1 --sr 22050 --channels 1 --output_size 0.743 --patience 20 --separate 0 --features 24 \
+--lr 1e-4 --min_lr 1e-4 --batch_size 16 --levels 13 --depth 1 --downsampling_kernel_size 15 --bottleneck_kernel_size 15 \
 --upsampling_kernel_size 5 --strides 2 --loss L2 --conv_type normal --res naive --feature_growth add --num_convs 1
 
 # default

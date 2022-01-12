@@ -14,7 +14,7 @@ class UpsamplingBlock(nn.Module):
         if res == "fixed":
             self.upconv = Resample1d(n_inputs, 15, stride, transpose=True)
         elif res == "naive":
-            self.upconv = LinearUpsample(scale_factor=2,mode='linear', align_corners=True)
+            self.upconv = LinearUpsample()
         else:
             self.upconv = ConvLayer(n_inputs, n_inputs, kernel_size, stride, conv_type, transpose=True)
 
@@ -80,7 +80,7 @@ class DownsamplingBlock(nn.Module):
         if res == "fixed":
             self.downconv = Resample1d(n_outputs, 15, stride) # Resampling with fixed-size sinc lowpass filter
         elif res == "naive":
-            self.downconv = Decimate(2)
+            self.downconv = Decimate()
         else:
             self.downconv = ConvLayer(n_outputs, n_outputs, kernel_size, stride, conv_type)
 

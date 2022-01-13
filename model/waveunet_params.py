@@ -40,4 +40,6 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
     .add_hyperparam('res', type=str, default="fixed",
                   help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned/naive")\
     .add_hyperparam('feature_growth', type=str, default="double",
-                  help="How the features in each layer should grow, either (add) the initial number of features each time, or multiply by 2 (double)")
+                  help="How the features in each layer should grow, either (add) the initial number of features each time, or multiply by 2 (double)")\
+    .add_hyperparam('skip_training', type=bool, default=True,
+                  help="Skip training to directly evaluate the checkpoint: True/False")

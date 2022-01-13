@@ -118,57 +118,60 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
     if args.load_model is not None:
         print("Continuing training full model from checkpoint " + str(args.load_model))
         state = model_utils.load_model(model, optimizer, args.load_model, args.cuda)
+    
+    if args.skip_training is not False:
+        print('TRAINING START')
+        while state["worse_epochs"] < args.patience:
+            print("Training one epoch from iteration " + str(state["step"]))
+            avg_time = 0.
+            model.train()
+            with tqdm(total=len(train_data) // args.batch_size) as pbar:
+                np.random.seed()
+                for example_num, (x, targets) in enumerate(dataloader):
+                    if args.cuda:
+                        x = x.cuda()
+                        for k in list(targets.keys()):
+                            targets[k] = targets[k].cuda()
 
-    print('TRAINING START')
-    while state["worse_epochs"] < args.patience:
-        print("Training one epoch from iteration " + str(state["step"]))
-        avg_time = 0.
-        model.train()
-        with tqdm(total=len(train_data) // args.batch_size) as pbar:
-            np.random.seed()
-            for example_num, (x, targets) in enumerate(dataloader):
-                if args.cuda:
-                    x = x.cuda()
-                    for k in list(targets.keys()):
-                        targets[k] = targets[k].cuda()
+                    t = time.time()
 
-                t = time.time()
+                    # Set LR for this iteration
+                    utils.set_cyclic_lr(optimizer, example_num, len(train_data) // args.batch_size, args.cycles,
+                                        args.min_lr, args.lr)
+                    writer.add_scalar("lr", utils.get_lr(optimizer), state["step"])
 
-                # Set LR for this iteration
-                utils.set_cyclic_lr(optimizer, example_num, len(train_data) // args.batch_size, args.cycles,
-                                    args.min_lr, args.lr)
-                writer.add_scalar("lr", utils.get_lr(optimizer), state["step"])
+                    # Compute loss for each instrument/model
+                    optimizer.zero_grad()
+                    if (args.separate == 0 and state["step"] == 0):
+                        print("Saving model graph")
+                        writer.add_graph(model, x, use_strict_trace=False)
+                        print("Graph added to logs")
+                    outputs, avg_loss = model_utils.compute_loss(model, x, targets, criterion, compute_grad=True)
 
-                # Compute loss for each instrument/model
-                optimizer.zero_grad()
-                if (args.separate == 0 and state["step"] == 0):
-                    print("Saving model graph")
-                    writer.add_graph(model, x, use_strict_trace=False)
-                    print("Graph added to logs")
-                outputs, avg_loss = model_utils.compute_loss(model, x, targets, criterion, compute_grad=True)
+                    optimizer.step()
 
-                optimizer.step()
+                    state["step"] += 1
 
-                state["step"] += 1
+                    t = time.time() - t
+                    avg_time += (1. / float(example_num + 1)) * (t - avg_time)
 
-                t = time.time() - t
-                avg_time += (1. / float(example_num + 1)) * (t - avg_time)
+                    writer.add_scalar("train_loss", avg_loss, state["step"])
 
-                writer.add_scalar("train_loss", avg_loss, state["step"])
+                    if example_num % args.example_freq == 0:
+                        input_centre = torch.mean(
+                            x[0, :, model.shapes["output_start_frame"]:model.shapes["output_end_frame"]],
+                            0)  # Stereo not supported for logs yet
+                        writer.add_audio("input", input_centre, state["step"], sample_rate=args.sr)
 
-                if example_num % args.example_freq == 0:
-                    input_centre = torch.mean(
-                        x[0, :, model.shapes["output_start_frame"]:model.shapes["output_end_frame"]],
-                        0)  # Stereo not supported for logs yet
-                    writer.add_audio("input", input_centre, state["step"], sample_rate=args.sr)
+                        for inst in outputs.keys():
+                            writer.add_audio(inst + "_pred", torch.mean(outputs[inst][0], 0), state["step"],
+                                             sample_rate=args.sr)
+                            writer.add_audio(inst + "_target", torch.mean(targets[inst][0], 0), state["step"],
+                                             sample_rate=args.sr)
 
-                    for inst in outputs.keys():
-                        writer.add_audio(inst + "_pred", torch.mean(outputs[inst][0], 0), state["step"],
-                                         sample_rate=args.sr)
-                        writer.add_audio(inst + "_target", torch.mean(targets[inst][0], 0), state["step"],
-                                         sample_rate=args.sr)
-
-                pbar.update(1)
+                    pbar.update(1)
+        else:
+            assert args.load_model is not None
 
         # VALIDATE
         val_loss = validate(args, model, criterion, val_data)
@@ -229,3 +232,4 @@ def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/spa
         args_comb = model_args.get_comb(i)
         print(f'Start training for job {job_name}, task {task_id}, params {i}: {args_comb}')
         train_func(args_comb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}")
+

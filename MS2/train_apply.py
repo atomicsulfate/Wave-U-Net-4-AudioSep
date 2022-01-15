@@ -72,8 +72,12 @@ def _compute_metrics(args, musdb, model, writer, state):
     avg_SDRs = {inst: np.mean([np.nanmean(song[inst]["SDR"]) for song in test_metrics]) for inst in args.instruments}
     avg_SIRs = {inst: np.mean([np.nanmean(song[inst]["SIR"]) for song in test_metrics]) for inst in args.instruments}
     for inst in args.instruments:
-        writer.add_scalar("test_SDR_" + inst, avg_SDRs[inst], state["step"])
-        writer.add_scalar("test_SIR_" + inst, avg_SIRs[inst], state["step"])
+        sdr_name = "test_SDR_" + inst
+        writer.add_scalar(sdr_name, avg_SDRs[inst], state["step"])
+        print(f'{sdr_name}: {avg_SDRs[inst]}')
+        sir_name = "test_SIR_" + inst
+        writer.add_scalar(sir_name, avg_SIRs[inst], state["step"])
+        print(f'{sir_name}: {avg_SIRs[inst]}')
     overall_SDR = np.mean([v for v in avg_SDRs.values()])
     writer.add_scalar("test_SDR", overall_SDR)
     print("SDR: " + str(overall_SDR))

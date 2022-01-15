@@ -174,29 +174,28 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
                                              sample_rate=args.sr)
 
                     pbar.update(1)
+            # VALIDATE
+            val_loss = validate(args, model, criterion, val_data)
+            print("VALIDATION FINISHED: LOSS: " + str(val_loss))
+            writer.add_scalar("val_loss", val_loss, state["step"])
+
+            # EARLY STOPPING CHECK
+            checkpoint_path = os.path.join(args.checkpoint_dir, "checkpoint_" + str(state["step"]))
+            if val_loss >= state["best_loss"]:
+                state["worse_epochs"] += 1
+            else:
+                print("MODEL IMPROVED ON VALIDATION SET!")
+                state["worse_epochs"] = 0
+                state["best_loss"] = val_loss
+                state["best_checkpoint"] = checkpoint_path
+
+            # CHECKPOINT
+            print("Saving model...")
+            model_utils.save_model(model, optimizer, state, checkpoint_path)
+
+            state["epochs"] += 1
         else:
             assert args.load_model is not None
-
-        # VALIDATE
-        val_loss = validate(args, model, criterion, val_data)
-        print("VALIDATION FINISHED: LOSS: " + str(val_loss))
-        writer.add_scalar("val_loss", val_loss, state["step"])
-
-        # EARLY STOPPING CHECK
-        checkpoint_path = os.path.join(args.checkpoint_dir, "checkpoint_" + str(state["step"]))
-        if val_loss >= state["best_loss"]:
-            state["worse_epochs"] += 1
-        else:
-            print("MODEL IMPROVED ON VALIDATION SET!")
-            state["worse_epochs"] = 0
-            state["best_loss"] = val_loss
-            state["best_checkpoint"] = checkpoint_path
-
-        # CHECKPOINT
-        print("Saving model...")
-        model_utils.save_model(model, optimizer, state, checkpoint_path)
-
-        state["epochs"] += 1
 
     #### TESTING ####
     # Test loss

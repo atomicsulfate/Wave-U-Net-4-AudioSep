@@ -64,6 +64,7 @@ def _compute_metrics(args, musdb, model, writer, state):
     # Mir_eval metrics
     test_metrics = evaluate(args, musdb["test"], model, args.instruments)
 
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
     # Dump all metrics results into pickle file for later analysis if needed
     with open(os.path.join(args.checkpoint_dir, "results.pkl"), "wb") as f:
         pickle.dump(test_metrics, f)
@@ -123,7 +124,7 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
         print("Continuing training full model from checkpoint " + str(args.load_model))
         state = model_utils.load_model(model, optimizer, args.load_model, args.cuda)
     
-    if args.skip_training is not False:
+    if not args.skip_training:
         print('TRAINING START')
         while state["worse_epochs"] < args.patience:
             print("Training one epoch from iteration " + str(state["step"]))

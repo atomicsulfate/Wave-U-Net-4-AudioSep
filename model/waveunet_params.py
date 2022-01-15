@@ -19,6 +19,7 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
                   help="Write an audio summary into Tensorboard logs every X training iterations") \
     .add_param('separate', type=int, default=1,
                   help="Train separate model for each source (1) or only one (0)")\
+    .add_param('skip_training', action='store_true', help="Skip training to directly evaluate the checkpoint. Default: False")\
     .add_hyperparam('features', type=int, default=32, help='Number of feature channels per layer')\
     .add_hyperparam('lr', type=float, default=1e-3, help='Initial learning rate in LR cycle (default: 1e-3)')\
     .add_hyperparam('min_lr', type=float, default=5e-5, help='Minimum learning rate in LR cycle (default: 5e-5)')\
@@ -41,5 +42,4 @@ waveunet_params.add_param('instruments', type=str, nargs='+', default=["bass", "
                   help="Resampling strategy: fixed sinc-based lowpass filtering or learned conv layer: fixed/learned/naive")\
     .add_hyperparam('feature_growth', type=str, default="double",
                   help="How the features in each layer should grow, either (add) the initial number of features each time, or multiply by 2 (double)")\
-    .add_hyperparam('skip_training', type=bool, default=True,
-                  help="Skip training to directly evaluate the checkpoint: True/False")
+

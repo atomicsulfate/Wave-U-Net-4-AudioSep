@@ -43,6 +43,14 @@
 #--lr 1e-4 --min_lr 1e-4 --batch_size 16 --levels 13 --depth 1 --downsampling_kernel_size 15 --bottleneck_kernel_size 15 \
 #--upsampling_kernel_size 5 --strides 2 --loss L2 --conv_type normal --res naive --feature_growth add --num_convs 1
 
+# test
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals \
+#--load_model=/home/pml_17/checkpoints/waveunet/job_M3_musdb_ext_acc_vocals_sr22050_mono_task0_exp0/checkpoint_765232 --skip_training \
+#--cycles 1 --sr 22050 --channels 1 --output_size 0.743 --patience 20 --separate 0 --features 24 \
+#--lr 1e-4 --min_lr 1e-4 --batch_size 16 --levels 13 --depth 1 --downsampling_kernel_size 15 --bottleneck_kernel_size 15 \
+#--upsampling_kernel_size 5 --strides 2 --loss L2 --conv_type normal --res naive --feature_growth add --num_convs 1
+
+
 # 2nd train (refined)
 #python train.py --hdf_dir=/home/space/datasets/musdb_extended/hdf --dataset_dir=/home/space/datasets/musdb_extended \
 #--load_model=/home/pml_17/checkpoints/waveunet/job_M3_musdb_acc_vocals_sr22050_mono_task0_exp0/checkpoint_98940 --cuda --instruments accompaniment vocals \
@@ -59,3 +67,8 @@ python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/spa
 
 # with musdb_extended
 #python train.py --hdf_dir=/home/space/datasets/musdb_extended/hdf --dataset_dir=/home/space/datasets/musdb_extended --cuda --instruments accompaniment vocals --sr 22050 --channels 1
+
+# test with musdb default trained with musdb_extended
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals \
+#--load_model=/home/pml_17/checkpoints/waveunet/job_default_pytorch_musdb_ext_acc_vocals_sr22050_mono_task0_exp0/checkpoint_1091600 \
+#--sr 22050 --channels 1

@@ -26,6 +26,12 @@ from model.waveunet import Waveunet
 from math import ceil
 
 def _create_waveunet(args):
+    '''
+    creates the waveunet model according to the given parameters
+    @param args: the argument list of hyperparameters
+    @return: waveunet model for audio source separation
+    '''
+
     num_features = [args.features * i for i in range(1, args.levels + 1)] if args.feature_growth == "add" else \
         [args.features * 2 ** i for i in range(0, args.levels)]
     target_outputs = ceil(args.output_size * args.sr)
@@ -44,6 +50,14 @@ def _create_waveunet(args):
     return model
 
 def _load_musdb(args, data_shapes):
+    '''
+    loads data for testing, validation and training that is fitted to the shape of the model
+    @param args: the argument list of hyperparameters
+    @param data_shapes: model shape to fit data to model shape
+    @return: source separation datasets for training, validation and testing as well as the dataloader for
+    training dataset and the retrieved audio files
+    '''
+
     musdb = get_musdb_folds(args.dataset_dir)
     # If not data augmentation, at least crop targets to fit model output shape
     crop_func = partial(crop_targets, shapes=data_shapes)
@@ -61,6 +75,15 @@ def _load_musdb(args, data_shapes):
     return train_data, val_data, test_data, dataloader, musdb
 
 def _compute_metrics(args, musdb, model, writer, state):
+    '''
+    computes evaluation metrics and adds them to the tensorboard
+    @param args: the argument list with hyperparameters
+    @param musdb: musdb dataset object
+    @param model: waveunet pytorch model
+    @param writer: tensorboard object to log the metrics
+    @param state: state with step value to record
+    '''
+
     # Mir_eval metrics
     test_metrics = evaluate(args, musdb["test"], model, args.instruments)
 
@@ -84,6 +107,12 @@ def _compute_metrics(args, musdb, model, writer, state):
     print("SDR: " + str(overall_SDR))
 
 def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
+    '''
+    creates model from given hyperparameters, trains it to a given dataset, computes validation loss and performs testing
+    @param args: argument list with hyperparmeters
+    @param experiment_name: experiment name for checkpoint and log saving
+    '''
+
     # Create subdirectory for hdf intermediate format files with name <instruments>_<sr>_<channels>
     hdf_subdir = "_".join(args.instruments) + f"_{args.sr}_{args.channels}"
     args.hdf_dir = os.path.join(args.hdf_dir, hdf_subdir)
@@ -217,6 +246,18 @@ _methods = {'waveunet': [train_waveunet, waveunet_params]}
 def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/space/datasets',
                 model_args: ModelArgs = None, job_name = 'experiment',
                 task_id = 0, task_index = 0, num_tasks = 1):
+    '''
+    performs training with hyperparameters. Uses default parameters if none are given
+    :param method: the waveunet model
+    :param dataset: original musdb dataset or the extended musdb dataset
+    :param datasets_path: Root directory where datasets are located
+    :param model_args: argument list with hyperparameters
+    :param job_name: job name
+    :param task_id: task id
+    :param task_index: task index
+    :param num_tasks: tasks number
+    '''
+
     if method not in _methods:
         raise ValueError(f"Unknown method {method}.")
 

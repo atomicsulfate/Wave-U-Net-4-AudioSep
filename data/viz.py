@@ -60,7 +60,8 @@ def plot_waveform(waveform, sample_rate, title="Waveform", xlim=None, ylim=None)
 
 
 def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
-    waveform = waveform.numpy()
+    if not isinstance(waveform, np.ndarray):
+        waveform = waveform.numpy()
 
     num_channels, num_frames = waveform.shape
     time_axis = torch.arange(0, num_frames) / sample_rate
@@ -79,7 +80,8 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
 
 
 def play_audio(waveform, sample_rate):
-    waveform = waveform.numpy()
+    if not isinstance(waveform, np.ndarray):
+        waveform = waveform.numpy()
 
     num_channels, num_frames = waveform.shape
     if num_channels == 1:

@@ -26,6 +26,7 @@ dependencies:
   - musdb
   - h5py
   - tqdm
+  - pytube
   - sortedcontainers
   # Others
   - torchaudio # Needed ?

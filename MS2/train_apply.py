@@ -7,6 +7,7 @@ import numpy as np
 
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import ConcatDataset
 from torch.optim import Adam
 from tqdm import tqdm
 
@@ -49,16 +50,19 @@ def _create_waveunet(args):
     print('parameter count: ', str(sum(p.numel() for p in model.parameters())))
     return model
 
-def _load_musdb(args, data_shapes):
+def _load_musdb(musdb, args, data_shapes, folds=None):
     '''
     loads data for testing, validation and training that is fitted to the shape of the model
-    @param args: the argument list of hyperparameters
-    @param data_shapes: model shape to fit data to model shape
-    @return: source separation datasets for training, validation and testing as well as the dataloader for
+    :param musdb: The musdb splits as returned by 'get_musdb_folds'.
+    :param args: the argument list of hyperparameters
+    :param data_shapes: model shape to fit data to model shape
+    :return: source separation datasets for training, validation and testing as well as the dataloader for
     training dataset and the retrieved audio files
+    :param folds: Used with kfold cross-validation. By default, musdb's official fixed train/validation split is used.
+    If folds is given here, it's expected to be a dict whose 'train' entry contains the ids of the train samples,
+    and its 'val' entry contains the validation id samples.
     '''
 
-    musdb = get_musdb_folds(args.dataset_dir)
     # If not data augmentation, at least crop targets to fit model output shape
     crop_func = partial(crop_targets, shapes=data_shapes)
     # Data augmentation function for training
@@ -67,12 +71,31 @@ def _load_musdb(args, data_shapes):
                                    args.hdf_dir, audio_transform=augment_func)
     val_data = SeparationDataset(musdb, "val", args.instruments, args.sr, args.channels, data_shapes, False,
                                  args.hdf_dir, audio_transform=crop_func)
+    train_subsampler = None
+    val_subsampler = None
+    train_val_shuffle = True
+    if (folds is not None):
+        # For k-fold cross validation concat train and val datasets in one and sample from the given folds instead.
+        train_subsampler = torch.utils.data.SubsetRandomSampler(folds['train'])
+        val_subsampler = torch.utils.data.SubsetRandomSampler(folds['val'])
+        train_data = ConcatDataset([train_data, val_data])
+        val_data = train_data
+        train_val_shuffle = None
+
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=train_val_shuffle,
+                                               num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn,
+                                               sampler=train_subsampler)
+    train_loader.num_samples = len(train_data)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size, shuffle=train_val_shuffle,
+                                             num_workers=args.num_workers, sampler=val_subsampler)
+    val_loader.num_samples = len(val_data)
+
     test_data = SeparationDataset(musdb, "test", args.instruments, args.sr, args.channels, data_shapes, False,
                                   args.hdf_dir, audio_transform=crop_func)
-
-    dataloader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
-                                             num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
-    return train_data, val_data, test_data, dataloader, musdb
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size, shuffle=False,
+                                                 num_workers=args.num_workers)
+    test_loader.num_samples = len(test_data)
+    return train_loader, val_loader, test_loader
 
 def _compute_metrics(args, musdb, model, writer, state):
     '''
@@ -106,19 +129,23 @@ def _compute_metrics(args, musdb, model, writer, state):
     writer.add_scalar("test_SDR", overall_SDR)
     print("SDR: " + str(overall_SDR))
 
-def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
+def train_waveunet(args: argparse.Namespace, musdb, experiment_name: str = "exp", folds=None):
     '''
-    creates model from given hyperparameters, trains it to a given dataset, computes validation loss and performs testing
-    @param args: argument list with hyperparmeters
-    @param experiment_name: experiment name for checkpoint and log saving
+    Creates model from given hyperparameters, trains it to a given dataset, computes validation loss and performs testing
+    :param args: argument list with hyperparmeters
+    :param musdb: The musdb splits as returned by 'get_musdb_folds'.
+    :param experiment_name: experiment name for checkpoint and log saving
+    :param folds: Used with kfold cross-validation. By default, musdb's official fixed train/validation split is used.
+    If folds is given here, it's expected to be a dict whose 'train' entry contains the ids of the train samples,
+    and its 'val' entry contains the validation id samples.
+    :return validation loss
     '''
+    print(f'Start training {experiment_name}, args: {args}')
+    return args.features + args.batch_size + args.depth
 
     # Create subdirectory for hdf intermediate format files with name <instruments>_<sr>_<channels>
     hdf_subdir = "_".join(args.instruments) + f"_{args.sr}_{args.channels}"
     args.hdf_dir = os.path.join(args.hdf_dir, hdf_subdir)
-
-    if (not os.path.exists(args.dataset_dir)):
-        raise ValueError(f"Dataset directory {args.dataset_dir} does not exist.")
 
     # Save checkpoints and logs in separate directories for each experiment
     args.checkpoint_dir = os.path.join(args.checkpoint_dir, experiment_name)
@@ -127,7 +154,7 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
     model = _create_waveunet(args)
     writer = SummaryWriter(args.log_dir)
 
-    train_data, val_data, test_data, dataloader, musdb = _load_musdb(args, model.shapes)
+    train_loader, val_loader, test_loader = _load_musdb(musdb, args, model.shapes, folds)
 
     ##### TRAINING ####
 
@@ -159,9 +186,10 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
             print("Training one epoch from iteration " + str(state["step"]))
             avg_time = 0.
             model.train()
-            with tqdm(total=len(train_data) // args.batch_size) as pbar:
+            num_it = train_loader.num_samples // args.batch_size
+            with tqdm(total=num_it) as pbar:
                 np.random.seed()
-                for example_num, (x, targets) in enumerate(dataloader):
+                for example_num, (x, targets) in enumerate(train_loader):
                     if args.cuda:
                         x = x.cuda()
                         for k in list(targets.keys()):
@@ -170,7 +198,7 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
                     t = time.time()
 
                     # Set LR for this iteration
-                    utils.set_cyclic_lr(optimizer, example_num, len(train_data) // args.batch_size, args.cycles,
+                    utils.set_cyclic_lr(optimizer, example_num, num_it, args.cycles,
                                         args.min_lr, args.lr)
                     writer.add_scalar("lr", utils.get_lr(optimizer), state["step"])
 
@@ -205,7 +233,7 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
 
                     pbar.update(1)
             # VALIDATE
-            val_loss = validate(args, model, criterion, val_data)
+            val_loss = validate(args, model, criterion, val_loader)
             print("VALIDATION FINISHED: LOSS: " + str(val_loss))
             writer.add_scalar("val_loss", val_loss, state["step"])
 
@@ -224,24 +252,44 @@ def train_waveunet(args: argparse.Namespace, experiment_name: str = "exp"):
             model_utils.save_model(model, optimizer, state, checkpoint_path)
 
             state["epochs"] += 1
-        else:
-            assert args.load_model is not None
+    else:
+        assert args.load_model is not None
 
-    #### TESTING ####
-    # Test loss
-    print("TESTING")
+    print(f'Best checkpoint: {state["best_checkpoint"]}, val loss: {state["best_loss"]}')
 
-    # Load best model based on validation loss
-    state = model_utils.load_model(model, None, state["best_checkpoint"], args.cuda)
-    test_loss = validate(args, model, criterion, test_data)
-    print("TEST FINISHED: LOSS: " + str(test_loss))
-    writer.add_scalar("test_loss", test_loss, state["step"])
+    if (folds is None):
+        #### TESTING ####
+        # Test loss
+        print("TESTING")
 
-    _compute_metrics(args, musdb, model, writer, state)
+        # Load best model based on validation loss
+        state = model_utils.load_model(model, None, state["best_checkpoint"], args.cuda)
+        test_loss = validate(args, model, criterion, test_loader)
+        print("TEST FINISHED: LOSS: " + str(test_loss))
+        writer.add_scalar("test_loss", test_loss, state["step"])
+
+        _compute_metrics(args, musdb, model, writer, state)
 
     writer.close()
+    return state['best_loss']
 
 _methods = {'waveunet': [train_waveunet, waveunet_params]}
+
+def _create_kfolds(k, n):
+    indcs = np.arange(n)
+    np.random.shuffle(indcs)
+    indcs_val_mask = np.empty(n, dtype=bool)
+    fold_size = n // k
+    val_fold_start = 0
+    kfolds = []
+    for i in range(k):
+        val_fold_end = val_fold_start + fold_size if i < k - 1 else n
+        indcs_val_mask[:] = False
+        indcs_val_mask[val_fold_start:val_fold_end] = True
+        kfolds.append({'train': indcs[~indcs_val_mask], 'val': indcs[indcs_val_mask]})
+        val_fold_start += fold_size
+    return kfolds
+
 
 def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/space/datasets',
                 model_args: ModelArgs = None, job_name = 'experiment',
@@ -268,13 +316,38 @@ def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/spa
             args = model_params.get_defaults()
             # Set dataset_dir and given args, fill in other parameters with default values.
             args.dataset_dir = os.path.join(datasets_path, dataset)
-            train_func(args)
+            musdb = get_musdb_folds(args.dataset_dir)
+            train_func(args, musdb)
             return
 
-    model_args = model_args.get_comb_partition(task_index, num_tasks)
+    musdb = get_musdb_folds(model_args.get().dataset_dir)
 
+    if (model_args.get_num_combs() == 1):
+        # Experiment with fixed hyper-parameters, use musdb's fixed train val split.
+        train_func(model_args.get(), musdb, experiment_name=f"job_{job_name}")
+        return
+
+    # Model evaluation: use K-fold cross validation.
+    model_args = model_args.get_comb_partition(task_index, num_tasks)
+    k = 5 # number of folds
+    n = len(musdb['train']) + len(musdb['val'])
+    min_loss = float('inf')
+    best_args = None
+
+    # For each hyperparam combination
     for i in range(model_args.get_num_combs()):
         args_comb = model_args.get_comb(i)
-        print(f'Start training for job {job_name}, task {task_id}, params {i}: {args_comb}')
-        train_func(args_comb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}")
+        avg_loss = 0
+        # For each fold
+        for fold_id, folds in enumerate(_create_kfolds(k, n)):
+            print(f'Fold {fold_id}. Train: {folds["train"]}, val: {folds["val"]}')
+            loss = train_func(args_comb, musdb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}_fold{fold_id}", folds=folds)
+            avg_loss += loss
+        avg_loss /= k
+        if (avg_loss < min_loss):
+            min_loss = avg_loss
+            best_args = args_comb
+
+    print(f'Best model, args: {best_args}, loss: {min_loss}')
+
 

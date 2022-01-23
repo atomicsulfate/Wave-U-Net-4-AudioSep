@@ -67,6 +67,35 @@ def _load_musdb(args, data_shapes):
                                              num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
     return train_data, val_data, test_data, dataloader, musdb
 
+def validate(args, model, criterion, dataloader):
+    '''
+    Iterate with a given model over a given test dataset and compute the desired loss
+    :param args: Options dictionary
+    :param model: Pytorch model
+    :param criterion: Loss function to use (similar to Pytorch criterions)
+    :param dataloader: Loads validation samples. Must have property 'num_samples' with number of samples in split.
+    :return:
+    '''
+
+    # VALIDATE
+    model.eval()
+    total_loss = 0.
+    with tqdm(total=dataloader.num_samples // args.batch_size) as pbar, torch.no_grad():
+        for example_num, (x, targets) in enumerate(dataloader):
+            if args.cuda:
+                x = x.cuda()
+                for k in list(targets.keys()):
+                    targets[k] = targets[k].cuda()
+
+            _, avg_loss = model_utils.compute_loss(model, x, targets, criterion)
+
+            total_loss += (1. / float(example_num + 1)) * (avg_loss - total_loss)
+
+            pbar.set_description("Current loss: {:.4f}".format(total_loss))
+            pbar.update(1)
+
+    return total_loss
+
 if __name__ == '__main__':
     experiment_name = os.environ['JOB_NAME'] if 'JOB_NAME' in os.environ else 'test'
     args = waveunet_params.parse_args().get_comb_partition(0, 1).get_comb(0)

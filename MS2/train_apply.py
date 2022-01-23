@@ -141,7 +141,6 @@ def train_waveunet(args: argparse.Namespace, musdb, experiment_name: str = "exp"
     :return validation loss
     '''
     print(f'Start training {experiment_name}, args: {args}')
-    return args.features + args.batch_size + args.depth
 
     # Create subdirectory for hdf intermediate format files with name <instruments>_<sr>_<channels>
     hdf_subdir = "_".join(args.instruments) + f"_{args.sr}_{args.channels}"

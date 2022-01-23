@@ -63,7 +63,7 @@
 # default
 ####################
 # with musdb
-python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1
 
 # with musdb_extended
 #python train.py --hdf_dir=/home/space/datasets/musdb_extended/hdf --dataset_dir=/home/space/datasets/musdb_extended --cuda --instruments accompaniment vocals --sr 22050 --channels 1
@@ -72,3 +72,27 @@ python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/spa
 #python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals \
 #--load_model=/home/pml_17/checkpoints/waveunet/job_default_pytorch_musdb_ext_acc_vocals_sr22050_mono_task0_exp0/checkpoint_1091600 \
 #--sr 22050 --channels 1
+
+#####################
+# Model selection
+####################
+
+# 1) Learning params (x9)
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
+#--features 24 --levels 6 --depth 1 --loss L2 --num_convs 2 --res fixed --cycles 2 --conv_type normal \
+#--lr 1e-3 1e-4 1e-5 --min_lr 1e-6 --batch_size 8 16 32
+
+# 2) Normalization (Opt) -> Choose gn for batch_size <=16, bn for 32.
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
+#--features 24 --levels 6 --depth 1 --loss L2 --num_convs 2 --res fixed --cycles 2 --lr X --min_lr 1e-6 --batch_size X \
+#--conv_type normal gn bn
+
+# 3) Resampling (x3)
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
+#--features 24 --levels 6 --depth 1 --loss L2 --num_convs 2 --cycles 2 --lr X --min_lr 1e-6 --batch_size X --conv_type X \
+#--res naive fixed learned
+
+# 3) Model size (x8)
+#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
+#--loss L2 --num_convs 2 --res fixed --cycles 2 --lr X --min_lr 1e-6 --batch_size X --conv_type X --res X \
+#--features 24 32 --levels 6 12 --depth 1 2

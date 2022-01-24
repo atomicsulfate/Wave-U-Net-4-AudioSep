@@ -56,7 +56,7 @@ class ModelArgs:
         if (index >= self.get_num_combs()):
             return None
 
-        args = copy.copy(self._args)
+        args = copy.deepcopy(self._args)
         comb = self._hyper_combs[index]
 
         for i, hyperparam in enumerate(self._hyperparams):

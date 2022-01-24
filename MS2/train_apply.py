@@ -26,7 +26,7 @@ from test import evaluate, validate
 from model.waveunet import Waveunet
 from math import ceil
 
-def _create_waveunet(args):
+def _create_waveunet(args, log=True):
     '''
     creates the waveunet model according to the given parameters
     @param args: the argument list of hyperparameters
@@ -43,12 +43,38 @@ def _create_waveunet(args):
 
     if args.cuda:
         model = model_utils.DataParallel(model)
-        print("move model to gpu")
+        if (log):
+            print("move model to gpu")
         model.cuda()
 
-    print('model: ', model)
-    print('parameter count: ', str(sum(p.numel() for p in model.parameters())))
+    if (log):
+        print('model: ', model)
+        print('parameter count: ', str(sum(p.numel() for p in model.parameters())))
     return model
+
+def _get_crop_func(crop_targets, data_shapes):
+    return partial(crop_targets, shapes=data_shapes)
+
+def _create_train_val_datasets(musdb, args, data_shapes):
+    # If not data augmentation, at least crop targets to fit model output shape
+    crop_func = _get_crop_func(crop_targets, data_shapes)
+    # Data augmentation function for training
+    augment_func = partial(random_amplify, shapes=data_shapes, min=0.7, max=1.0)
+    train_data = SeparationDataset(musdb, "train", args.instruments, args.sr, args.channels, data_shapes, True,
+                                   args.hdf_dir, audio_transform=augment_func)
+    val_data = SeparationDataset(musdb, "val", args.instruments, args.sr, args.channels, data_shapes, False,
+                                 args.hdf_dir, audio_transform=crop_func)
+    return train_data, val_data
+
+def _set_hdf_subdir(args):
+    # Create subdirectory for hdf intermediate format files with name <instruments>_<sr>_<channels>
+    hdf_subdir = "_".join(args.instruments) + f"_{args.sr}_{args.channels}"
+    args.hdf_dir = os.path.join(args.hdf_dir, hdf_subdir)
+
+def _get_train_val_num_samples(musdb, args, data_shapes):
+    _set_hdf_subdir(args)
+    train_data, val_data = _create_train_val_datasets(musdb, args, data_shapes)
+    return len(train_data)+len(val_data)
 
 def _load_musdb(musdb, args, data_shapes, folds=None):
     '''
@@ -62,15 +88,8 @@ def _load_musdb(musdb, args, data_shapes, folds=None):
     If folds is given here, it's expected to be a dict whose 'train' entry contains the ids of the train samples,
     and its 'val' entry contains the validation id samples.
     '''
+    train_data, val_data = _create_train_val_datasets(musdb, args, data_shapes)
 
-    # If not data augmentation, at least crop targets to fit model output shape
-    crop_func = partial(crop_targets, shapes=data_shapes)
-    # Data augmentation function for training
-    augment_func = partial(random_amplify, shapes=data_shapes, min=0.7, max=1.0)
-    train_data = SeparationDataset(musdb, "train", args.instruments, args.sr, args.channels, data_shapes, True,
-                                   args.hdf_dir, audio_transform=augment_func)
-    val_data = SeparationDataset(musdb, "val", args.instruments, args.sr, args.channels, data_shapes, False,
-                                 args.hdf_dir, audio_transform=crop_func)
     train_subsampler = None
     val_subsampler = None
     train_val_shuffle = True
@@ -91,7 +110,7 @@ def _load_musdb(musdb, args, data_shapes, folds=None):
     val_loader.num_samples = len(val_data)
 
     test_data = SeparationDataset(musdb, "test", args.instruments, args.sr, args.channels, data_shapes, False,
-                                  args.hdf_dir, audio_transform=crop_func)
+                                  args.hdf_dir, audio_transform=_get_crop_func(crop_targets, data_shapes))
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size, shuffle=False,
                                                  num_workers=args.num_workers)
     test_loader.num_samples = len(test_data)
@@ -129,7 +148,7 @@ def _compute_metrics(args, musdb, model, writer, state):
     writer.add_scalar("test_SDR", overall_SDR)
     print("SDR: " + str(overall_SDR))
 
-def train_waveunet(args: argparse.Namespace, musdb, experiment_name: str = "exp", folds=None):
+def train_waveunet(args: argparse.Namespace, musdb, model = None, experiment_name: str = "exp", folds=None):
     '''
     Creates model from given hyperparameters, trains it to a given dataset, computes validation loss and performs testing
     :param args: argument list with hyperparmeters
@@ -142,15 +161,14 @@ def train_waveunet(args: argparse.Namespace, musdb, experiment_name: str = "exp"
     '''
     print(f'Start training {experiment_name}, args: {args}')
 
-    # Create subdirectory for hdf intermediate format files with name <instruments>_<sr>_<channels>
-    hdf_subdir = "_".join(args.instruments) + f"_{args.sr}_{args.channels}"
-    args.hdf_dir = os.path.join(args.hdf_dir, hdf_subdir)
+    _set_hdf_subdir(args)
 
     # Save checkpoints and logs in separate directories for each experiment
     args.checkpoint_dir = os.path.join(args.checkpoint_dir, experiment_name)
     args.log_dir = os.path.join(args.log_dir, experiment_name)
 
-    model = _create_waveunet(args)
+    if (model is None):
+        model = _create_waveunet(args)
     writer = SummaryWriter(args.log_dir)
 
     train_loader, val_loader, test_loader = _load_musdb(musdb, args, model.shapes, folds)
@@ -329,17 +347,19 @@ def train_apply(method = 'waveunet', dataset = 'musdb', datasets_path='/home/spa
     # Model evaluation: use K-fold cross validation.
     model_args = model_args.get_comb_partition(task_index, num_tasks)
     k = 5 # number of folds
-    n = len(musdb['train']) + len(musdb['val'])
     min_loss = float('inf')
     best_args = None
 
     # For each hyperparam combination
     for i in range(model_args.get_num_combs()):
-        args_comb = model_args.get_comb(i)
         avg_loss = 0
+        tmp_args = model_args.get_comb(i)
+        tmp_args.cuda = False
+        n = _get_train_val_num_samples(musdb, tmp_args, _create_waveunet(tmp_args, False).shapes)
         # For each fold
         for fold_id, folds in enumerate(_create_kfolds(k, n)):
-            print(f'Fold {fold_id}. Train: {folds["train"]}, val: {folds["val"]}')
+            args_comb = model_args.get_comb(i)
+            print(f'Fold {fold_id}. Train: {len(folds["train"])} samples, val: {len(folds["val"])} samples.')
             loss = train_func(args_comb, musdb, experiment_name=f"job_{job_name}_task{task_id}_exp{i}_fold{fold_id}", folds=folds)
             avg_loss += loss
         avg_loss /= k

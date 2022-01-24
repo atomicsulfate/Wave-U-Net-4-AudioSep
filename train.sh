@@ -78,9 +78,9 @@
 ####################
 
 # 1) Learning params (x9)
-#python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
-#--features 24 --levels 6 --depth 1 --loss L2 --num_convs 2 --res fixed --cycles 2 --conv_type normal \
-#--lr 1e-3 1e-4 1e-5 --min_lr 1e-6 --batch_size 8 16 32
+python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \
+--features 24 --levels 6 --depth 1 --loss L2 --num_convs 2 --res fixed --cycles 2 --conv_type normal \
+--lr 1e-3 1e-4 1e-5 --min_lr 1e-6 --batch_size 8 16 32
 
 # 2) Normalization (Opt) -> Choose gn for batch_size <=16, bn for 32.
 #python train.py --hdf_dir=/home/space/datasets/musdb/hdf --dataset_dir=/home/space/datasets/musdb --cuda --instruments accompaniment vocals --sr 22050 --channels 1 --patience 8 \

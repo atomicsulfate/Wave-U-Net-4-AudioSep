@@ -34,14 +34,14 @@ def create_waveunet(args, log=True):
         print('parameter count: ', str(sum(p.numel() for p in model.parameters())))
     return model
 
-def load_model(args, checkpoint):
-    model = create_waveunet(args)
-    model_utils.load_model(model=model, optimizer=None, path=checkpoint, cuda=False)
-    return model
-
-def load_default_model():
+def get_def_model_args():
     args = waveunet_params.get_defaults()
     args.instruments = ["accompaniment", "vocals"]
     args.sr = 22050
     args.channels = 1
-    return load_model(args, "MS3/checkpoint_493495")
+    return args
+
+def load_model(args=get_def_model_args(), checkpoint='/home/pml_17/checkpoints/waveunet/best_checkpoint'):
+    model = create_waveunet(args)
+    model_utils.load_model(model=model, optimizer=None, path=checkpoint, cuda=False)
+    return model

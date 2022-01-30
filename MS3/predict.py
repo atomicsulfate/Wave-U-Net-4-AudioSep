@@ -5,6 +5,39 @@ sys.path.append(root_dir)
 
 from MS1.load_data import load_data
 from utils import load_model, get_def_model_args
+import torch
+from torch.nn.functional import conv1d
+import numpy as np
+
+def_window_secs = 2
+def_hop_secs = 1.5
+
+def _predict_audio(audio, model):
+    mix_audio = audio
+    mix_len = mix_audio.shape[1]
+
+    sources = predict(mix_audio, model)
+    # In case we had to pad the mixture at the end, or we have a few samples too many due to inconsistent down- and upsamṕling, remove those samples from source prediction now
+    for key in sources.keys():
+        diff = sources[key].shape[1] - mix_len
+        if diff > 0:
+            print("WARNING: Cropping " + str(diff) + " samples")
+            sources[key] = sources[key][:, :-diff]
+        elif diff < 0:
+            print("WARNING: Padding output by " + str(diff) + " samples")
+            sources[key] = np.pad(sources[key], [(0, 0), (0, -diff)], "constant", 0.0)
+
+    return sources
+
+def _compute_residue(mixture_audio, vocals_audio, accompaniment_audio, sr,
+                 window_secs = def_window_secs, hop_secs = def_hop_secs):
+    # Residual energy after substracting predicted sources
+    residual = (mixture_audio - (vocals_audio + accompaniment_audio))**2
+    conv_input = torch.from_numpy(np.expand_dims(residual,0)).float()
+    conv_kernel = torch.ones([1,1,round(window_secs*sr)])
+    residual_t = conv1d(conv_input,conv_kernel,
+                        stride=round(hop_secs*sr), padding='valid').squeeze()
+    return residual_t
 
 def predict(x, sources = ["accompaniment", "vocals"], sr=22050, model=None):
     '''
@@ -23,8 +56,12 @@ def predict(x, sources = ["accompaniment", "vocals"], sr=22050, model=None):
 
     if (model is None):
         model = load_model()
+    mix, _ = x
+    prediction = _predict_audio(mix.detach().cpu().numpy(), model)
+    residual = _compute_residue(mix, prediction["vocals"], prediction["accompaniment"], sr)
+    return residual
 
-    return {}, 0
+    return prediction, 0
 
 if __name__ == '__main__':
     train_set, test_set = load_data(datasets_path='data')

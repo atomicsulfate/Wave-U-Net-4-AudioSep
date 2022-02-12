@@ -22,6 +22,7 @@ def explain(x, sources = ["accompaniment", "vocals"], resolution=10, sr=22050, m
     Element (i,j,k) is a normalized value [0-1] of the importance that input window i has on the prediction of output
     window j for source k.
     '''
+    raise NotImplementedError("Not implemented. Not Applicable for this project (see report).");
     if (model is None):
         model = load_model()
 

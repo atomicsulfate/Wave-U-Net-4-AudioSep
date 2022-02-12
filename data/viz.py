@@ -5,6 +5,11 @@ import data.audio_prepro
 import librosa
 import librosa.display
 import numpy as np
+from matplotlib.ticker import MaxNLocator
+from librosa.display import TimeFormatter
+from librosa.util import frame
+from librosa import core
+from  matplotlib import colors
 
 def plot_wave(waveform, sample_rate, axes, title="Waveform"):
     librosa.display.waveplot(waveform, sr=sample_rate, alpha=0.8, ax=axes, color="xkcd:indigo blue")
@@ -12,6 +17,9 @@ def plot_wave(waveform, sample_rate, axes, title="Waveform"):
     axes.set_title(title)
     axes.set_xlabel("Time (s)")
     axes.set_ylabel("Magnitude")
+
+def plot_wave_confidence():
+    pass
 
 def plot_spectrogram(stft, sample_rate, axes, title="Spectrogram"):
     n_fft = (stft.shape[0]-1)*2
@@ -31,6 +39,84 @@ def plot_spectrum(stft, axes, title="Spectrum"):
     axes.set_title(title)
     axes.set_xlabel("Frequency (Hz)")
     axes.set_ylabel("Amplitude")
+
+def plot_wave_confidence(wave, confidence, sample_rate, axes, title="Waveform", cmap_name='plasma', fig=None):
+    '''
+    Plots an audio waveform colored according to the given confidence for each window interval.
+    :param wave: The input audio
+    :param confidence: An np.array with the confidence value for each time window.
+    :param sample_rate: Sampling rate for all audio signals.
+    :param axes: Axes used for the plot.
+    :param title: Plot title.
+    :param cmap_name: Name of the color map to represent the confidence.
+    :param fig: Figure that will contain the plot. If given, the confidence colorbar legend will be drawn as part
+                of the figure.
+    '''
+    if wave.ndim == 1:
+        wave = wave[np.newaxis, :]
+
+    sr = sample_rate
+    num_windows = len(confidence)
+    hop_length = 25 # Num audio samples per point in the graph. Divides typical sample rates like 44100 and 22050.
+    num_samples_win = wave.shape[1] // num_windows
+    num_points_win = num_samples_win // hop_length
+
+    # axis formatting
+    axes.xaxis.set_major_formatter(TimeFormatter(unit=None, lag=False))
+    axes.xaxis.set_major_locator(MaxNLocator(nbins='auto', prune=None, steps=[1, 1.5, 5, 6, 10], min_n_ticks=10))
+    axes.tick_params(labelsize=14)
+    axes.set_title(title, fontsize=20)
+    axes.set_xlabel('Time', fontsize=18)
+    axes.set_ylabel('Amplitude', fontsize=18)
+
+    y = np.abs(frame(wave, frame_length=hop_length, hop_length=hop_length)).max(axis=1)
+    y_top = y[0]
+    y_bottom = -y[-1]
+
+    x = core.times_like(y_top, sr=sr, hop_length=hop_length)
+    axes.set_xlim([x.min(), x.max()])
+
+    norm = colors.Normalize(vmin=confidence.min(), vmax=confidence.max())
+    cmap = plt.cm.get_cmap(cmap_name)
+
+    for i in range(num_windows):
+        axes.fill_between(x[i * num_points_win:(i + 1) * num_points_win],
+                         y_bottom[i * num_points_win:(i + 1) * num_points_win],
+                         y_top[i * num_points_win:(i + 1) * num_points_win], color=cmap(norm(confidence[i])))
+
+    if (fig is not None):
+        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), orientation='vertical', label='Confidence')
+        cbar.ax.tick_params(labelsize=14)
+        cbar.ax.yaxis.get_label().set_fontsize(20)
+
+def plot_prediction_confidence(input_mixture, prediction, confidence, sr):
+    '''
+    Plots the waveforms corresponding to the input mixture and predicted sources colored to indicate
+    the confidence in the prediction for each window interval.
+    :param input_mixture: The input mixture audio
+    :param prediction: Predicted audio sources in a dictionary, where the keys are the source names and the values
+           the corresponding audio time series.
+    :param confidence: An np.array with the confidence value for each time window.
+    :param sr: Sampling rate for all audio signals.
+    :returns: The created Figure.
+    '''
+    cmap_name = "plasma"
+    num_plots = len(prediction)+1
+    fig, axes = plt.subplots(nrows=num_plots, ncols=1, figsize=(10*num_plots, 15))
+
+    plot_wave_confidence(input_mixture.detach().cpu().numpy(), confidence, sr, axes[0], "Input mixture", cmap_name)
+    for i, (source_name, source_audio) in enumerate(prediction.items()):
+        plot_wave_confidence(source_audio.squeeze(), confidence, sr, axes[i+1], f'Est. {source_name}', cmap_name)
+
+    norm = colors.Normalize(vmin=confidence.min(), vmax=confidence.max())
+    cmap = plt.cm.get_cmap(cmap_name)
+    fig.tight_layout()
+    fig.subplots_adjust(right=0.85, hspace=0.3)
+    cbar_ax = fig.add_axes([0.90, 0.15, 0.025, 0.7])
+    cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax, orientation='vertical', label='Confidence')
+    cbar.ax.tick_params(labelsize=14)
+    cbar.ax.yaxis.get_label().set_fontsize(20)
+    return fig
 
 #################
 # Misc. functions
